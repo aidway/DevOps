@@ -1,0 +1,4 @@
+今天验证了一下，下面的格式化方式没有问题， -N 后面的参数表示 inode数量，是否加 -T largefile 无区别。
+mkfs.ext4 /dev/sdc -N 20000000
+
+测试的情况：2T磁盘设置2000w个inode，格式化时间1.5min~2min；设置5000w个inode，格式化时间3.5~4min 。

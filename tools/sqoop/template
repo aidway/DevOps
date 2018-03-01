@@ -1,0 +1,11 @@
+sqoop import --connect jdbc:oracle:thin:@11.1.34.33:1521:odsdb1 --username FDM  --password FDM  \
+--table XXXXXXX \
+--target-dir /oracle/fdm/XXXXXXX \
+--fields-terminated-by "\\01" \
+--hive-drop-import-delims     \
+--null-string '\\N'           \
+--null-non-string '\\N'       \
+--fetch-size 5000  \
+--split-by "MOD(ORA_HASH(rowid),5)" \
+-m 5
+
