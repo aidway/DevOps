@@ -10,7 +10,7 @@
 # Description: Oracle DDL to TDH DDL(txt/hyperdrive/es/orc/holodesk/insert)
 # OS Type:     linux/hp-ux
 # Notes:       Run the script by the user which start the instance,default is oracle 
-# test test222
+#
 # -----------------------------------------------------------------------------------------
 
 
