@@ -1,0 +1,2 @@
+export ALL_IP=11.1.199.[1-10]
+export ALL_HOSTNAME=hnnx-dn[1-10]

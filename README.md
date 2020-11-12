@@ -1,5 +1,1 @@
-# icode
-
-| # | Title | Solution | Difficulty |
-|---| ----- | -------- | ---------- |
-|224|[Basic Calculator](https://leetcode.com/problems/basic-calculator/) | [Python]
+若干运维工具记录。

@@ -1,6 +1,0 @@
----
-- hosts: webservers
-  become: yes
-  become_method: sudo
-  roles:
-  - role: geerlingguy.nginx

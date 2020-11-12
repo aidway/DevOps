@@ -1,0 +1,21 @@
+地址： 192.168.1.35
+
+0、切换到oracle用户，以下所有操作均在oracle下操作
+su - oracle
+
+1、修改conf
+vi /home/oracle/tdhddl/conf/core.conf
+
+
+注：通常情况下，只需要修改 EXTERNAL_TABLE_ROOT_DIR_HDFS ，该参数指定外表路径。
+
+2、填写表名
+vi /home/oracle/tdhddl/conf/tables.lst
+
+3、运行脚本
+sh /home/oracle/tdhddl/run.sh
+
+4、查看结果
+cd /home/oracle/tdhddl/ddl
+
+

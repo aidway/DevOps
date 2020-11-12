@@ -1,0 +1,29 @@
+
+
+/dev/sda1:
+ Timing cached reads:   19518 MB in  2.00 seconds = 9772.37 MB/sec
+ Timing buffered disk reads: 612 MB in  3.01 seconds = 203.64 MB/sec
+
+/dev/sdb1:
+ Timing cached reads:   18830 MB in  2.00 seconds = 9427.96 MB/sec
+ Timing buffered disk reads: 620 MB in  3.00 seconds = 206.50 MB/sec
+
+/dev/sdc1:
+ Timing cached reads:   19736 MB in  2.00 seconds = 9881.99 MB/sec
+ Timing buffered disk reads: 630 MB in  3.01 seconds = 209.44 MB/sec
+
+/dev/sdd1:
+ Timing cached reads:   19766 MB in  2.00 seconds = 9897.15 MB/sec
+ Timing buffered disk reads: 498 MB in  3.00 seconds = 165.86 MB/sec
+
+/dev/sde1:
+ Timing cached reads:   19510 MB in  2.00 seconds = 9769.46 MB/sec
+ Timing buffered disk reads: 616 MB in  3.00 seconds = 205.24 MB/sec
+
+/dev/sdf1:
+ Timing cached reads:   19414 MB in  2.00 seconds = 9720.50 MB/sec
+ Timing buffered disk reads: 582 MB in  3.01 seconds = 193.49 MB/sec
+
+/dev/nvme0n1p1:
+ Timing cached reads:   19670 MB in  2.00 seconds = 9849.28 MB/sec
+ Timing buffered disk reads: 6176 MB in  3.00 seconds = 2057.52 MB/sec

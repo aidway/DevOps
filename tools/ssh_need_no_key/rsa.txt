@@ -1,0 +1,9 @@
+doExpect()
+{
+  expect -c "set timeout 30; spawn $1; expect \"assword:\"; send \"$2\r\"; expect eof; exit"
+}
+ssh-keygen -t rsa -P '' -f ~/.ssh/id_rsa
+for ip in $other_ip
+do
+        doExpect "ssh-copy-id -i /root/.ssh/id_rsa.pub root@$ip" "$passwd"
+done

@@ -1,0 +1,4 @@
+30 16 * * * sh /root/mysh/tbsize/run.sh > /tmp/tbsize.log 2>&1
+
+
+
