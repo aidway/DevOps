@@ -1,0 +1,78 @@
+一、OMS：监控TM锁持有时间
+报警信息：
+
+
+监控语句：
+select /*+ rule */
+ 'LOCK_SID:' || t1.sid || 'Address of lock:' || t1.KADDR, t1.ctime
+  from v$lock t1, v$session t2, SYS.OBJ$ t3
+ where lmode > 0
+   and (t2.PROGRAM not like '%(DW%)' or t2.PROGRAM is null)
+   and t3.OBJ# = t1.ID1
+   and t1.type = 'TM'
+   and t1.sid = t2.sid
+   and t3.name <> 'PLAN_TABLE$';
+
+
+二、OMS：监控锁排队
+报警信息：enqueue排队，锁信息为LOCKED_OBJ:Not Obj Lock\,LOCK_TYPE:WF\,LOCK_TIME:56\,LOCK_CNT:1,锁等待时间或排队等待数量的值为 5.6
+
+监控语句：
+select 'LOCKED_OBJ:' || decode(CHR(bitand(b.p1, -16777216) / 16777215) ||
+                               CHR(bitand(b.p1, 16711680) / 65535),
+                               'TX',
+                               nvl(c.name, 'Not Table'),
+                               'TM',
+                               c.name,
+                               'Not Obj Lock') || ',LOCK_TYPE:' ||
+       CHR(bitand(b.p1, -16777216) / 16777215) ||
+       CHR(bitand(b.p1, 16711680) / 65535) || ',LOCK_TIME:' ||
+       max(b.SECONDS_IN_WAIT) || ',LOCK_CNT:' || count(b.sid) c1,
+       greatest(max(b.SECONDS_IN_WAIT / 10), count(b.sid)) c2
+  from (select w.p1, w.p2, w.seconds_in_wait, a.sid, a.ROW_WAIT_OBJ#
+          from v$session a, v$session_wait w
+         where a.sid = w.sid
+           and w.event like 'enq%'
+           and w.state = 'WAITING') b,
+       sys.obj$ c
+ where c.obj#(+) = decode(CHR(bitand(b.p1, -16777216) / 16777215) ||
+                          CHR(bitand(b.p1, 16711680) / 65535),
+                          'TX',
+                          b.ROW_WAIT_OBJ#,
+                          'TM',
+                          b.p2,
+                          2)
+ group by b.p1, c.name;
+
+
+-- itump
+select distinct l.id1 || '.' || l.id2 lock_id,
+                decode(L.type,
+                       'TM',
+                       'TM on ' || T1.NAME,
+                       'TX',
+                       'TX on ' || T1.NAME,
+                       'TO',
+                       'TO on ' || T1.NAME,
+                       L.Type) Lock_Type,
+                nvl(S.USERNAME, 'Internal') username,
+                substr(nvl(S.PROGRAM, 'None'), 1, 30) || '[' || s.process || ']' program,
+                decode(l.request, 0, null, '--') || L.SID || ',' ||
+                S.SERIAL# Kill,
+                l.lmode,
+                l.request,
+                l.ctime,
+                S.STATUS,
+                W.STATE,
+                W.EVENT,
+                s.last_call_et,
+                q.sql_text
+  from V$LOCK L, V$SESSION S, V$SESSION_WAIT W, SYS.OBJ$ T1, v$sqlarea q
+ where L.SID = S.SID
+   and S.SID = W.SID
+   and T1.OBJ# =
+       decode(L.TYPE, 'TM', L.ID1, 'TX', S.ROW_WAIT_OBJ#, 'TO', L.ID1, 10)
+   and S.TYPE != 'BACKGROUND'
+   and decode(s.sql_hash_value, 0, s.prev_hash_value, s.sql_hash_value) =
+       q.hash_value(+)
+ order by substr(lock_type, 1, 2), lock_id, ctime desc;

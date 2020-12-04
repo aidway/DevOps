@@ -1,0 +1,32 @@
+1、新建一张测试表
+create table tb_test 
+(
+    id number,
+    blb blob
+);
+commit;
+2、往tb_test表中插入一条新记录用于测试。
+insert into tb_test values(1, empty_blob());
+COMMIT;
+注：往有blob类型的字段的数据表中插入新记录，不能直接填入值，必须先往blob字段插入一个empty_blob()，然后再用DBMS_LOB.WRITE函数写入blob的值。
+3、向id为1的记录的blb字段写入以下字符串：'你好啊！'；
+declare 
+    directions blob;
+    amount binary_integer;
+    offset integer;
+    first_direction varchar2(100);
+    more_directions varchar2(500);
+begin
+    update tb_test set blb = empty_blob() where id = 1;      --更新和新增一样要将BLOB字段设置为EMPTY_BLOB()
+    select blb into directions from tb_test where id = 1 for update; --一定要用for update锁住记录，否则DBMS_LOB.OPEN会出错
+    DBMS_LOB.OPEN(directions, DBMS_LOB.LOB_READWRITE);
+    first_direction := '你好啊！';
+    amount := LENGTHB(first_direction);  --number of characters to write有中文必须用LENGTHB
+       offset := 1; --begin writing to the first character of the clob
+        DBMS_LOB.WRITE(directions, amount, offset, UTL_RAW.cast_to_raw(first_direction));
+        --UTL_RAW.cast_to_raw函数将字符串转换成二进制数
+    DBMS_LOB.CLOSE(directions);
+    commit;
+end; 
+4、把插入的BLOB数据转换成字符串显示的方式是
+select id,UTL_RAW.cast_to_varchar2(blb) blb from tb_test;

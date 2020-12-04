@@ -1,0 +1,32 @@
+drop table p_emp;
+CREATE TABLE p_emp
+(sal NUMBER(7,2))
+PARTITION BY RANGE(sal)
+(partition emp_p1 VALUES LESS THAN (2000),
+partition emp_p2 VALUES LESS THAN (4000));
+
+create index p_emp_ind on p_emp(sal) local;
+
+drop table exchtab1;
+CREATE TABLE exchtab1 as SELECT sal FROM emp WHERE sal<2000;
+create index exchtab1_ind on exchtab1(sal) ;
+
+alter table p_emp exchange partition emp_p1 with table exchtab1 including indexes;
+
+
+
+select s.index_owner, s.index_name, s.partition_name, s.status
+  from dba_ind_partitions s
+ where s.index_name = 'P_EMP_IND';
+
+
+
+select owner,
+       index_name,
+       index_type,
+       s.table_name,
+       s.partitioned,
+       s.global_stats,
+       s.status
+  from dba_indexes s
+ where index_name = 'P_EMP_IND';

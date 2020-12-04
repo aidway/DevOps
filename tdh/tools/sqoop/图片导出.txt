@@ -1,0 +1,45 @@
+drop table scott.t_image;
+create table scott.t_image(fname varchar2(200), t_image blob,id number);
+create or replace directory images as '/tmp/t1';
+
+insert into scott.t_image(fname,id) values('IMG_20160724_152754.jpg',1);
+commit;
+
+create or replace procedure scott.img_insert as
+begin
+    declare
+        f_lob bfile;
+        b_lob blob;
+        filename varchar2(200);
+    begin
+        for i in 1 .. 5 loop
+            select t.fname into filename from scott.t_image t where t.id = i;
+            update scott.t_image set t_image = empty_blob() where id = i return t_image into b_lob;
+            f_lob := bfilename('IMAGES', filename);
+            dbms_lob.fileopen(f_lob, dbms_lob.file_readonly);
+            dbms_lob.loadfromfile(b_lob, f_lob, dbms_lob.getlength(f_lob));
+            dbms_lob.fileclose(f_lob);
+            commit;
+        end loop;
+    end;
+end;
+/
+
+select * from scott.T_IMAGE;
+select * from dba_lobs s where s.TABLE_NAME='T_IMAGE';
+select s.bytes/1024/1024 size_mb from dba_segments s where s.segment_name='SYS_LOB0000306295C00002$$';
+
+
+sqoop import --connect jdbc:oracle:thin:@11.0.160.227:1521:odsdb1 --username scott  --password tiger  \
+--table T_IMAGE \
+--target-dir /oracle/T_IMAGE  \
+--fields-terminated-by "\\01" \
+--hive-drop-import-delims     \
+--null-string '\\N'           \
+--null-non-string '\\N'       \
+--fetch-size 5000            \
+-m 1 
+
+
+
+

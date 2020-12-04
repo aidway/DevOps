@@ -1,0 +1,61 @@
+主要还是看index的扁平程度,
+Rebuild the index when :
+  - deleted entries represent 20% or more of the current entries
+  - the index depth is more then 4 levels.
+Possible candidate for bitmap index :
+  - when distinctiveness is more than 99%
+
+然后可以用如何找出Oracle中需要或值得重建的索引中的脚本，也可以如下:
+条件1
+在分析(analyze)指定索引之后，查询index_stats的height字段的值，如果这个值>=4 ,则最好重建（rebuild）这个索引。虽然这个规则不是总是正确，但如果这个值一直都是不变的，则这个索引也就不需重建。
+条件2
+在分析(analyze)指定索引之后，查询index_stats的del_lf_rows和lf_rows的值,如果(del_lf_rows/lf_rows)*100 > = 20，则这个索引也需要重建。
+例子：
+SQL > analyze index IND_PK validate structure;
+ 
+SQL > select name,height,del_lf_rows,lf_rows,(del_lf_rows/lf_rows) *100 from index_stats;
+ 
+NAME                               HEIGHT DEL_LF_ROWS    LF_ROWS (DEL_LF_ROWS/LF_ROWS)*100
+ 
+------------------------------ ---------- ----------- ---------- -------------------------
+ 
+INDX_PK                                4      277353     990206                28.0096263
+SQL> alter index IND_PK rebuild;
+
+
+col c1 heading ‘Object|Name’ format a30
+col c2 heading ‘Operation’ format a15
+col c3 heading ‘Option’ format a15
+col c4 heading ‘Index|Usage|Count’ format 999,999
+break on c1 skip 2
+break on c2 skip 2
+
+select
+   p.object_name c1,
+   p.operation c2,
+   p.options c3,
+   count(1) c4
+from
+   dba_hist_sql_plan p,
+   dba_hist_sqlstat s
+where
+   p.object_owner <> 'SYS'
+and
+   p.operation like ‘%INDEX%’
+and
+   p.sql_id = s.sql_id
+group by
+   p.object_name,
+   p.operation,
+   p.options
+order by
+   1,2,3;
+
+
+
+
+
+
+
+
+
