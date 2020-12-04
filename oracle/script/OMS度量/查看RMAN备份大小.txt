@@ -1,0 +1,68 @@
+###############  变更原因  ###############
+需要通过oms度量查询生产系统中rman备份文件的大小。
+
+
+
+
+###############  变更目标  ###############
+在oms10g和oms12c中，新增度量rman_backup_size，调度频率为每月一次，报警级别为【警告】。
+数据收集后将该度量禁用收集。
+
+
+
+###############  变更步骤  ###############
+OMS12c：
+1.新建度量rman_backup_size
+  select min((select instance_name from v$instance)) || ',' ||
+         round(sum(a.INPUT_BYTES) / 1024 / 1024, 2) || ',' ||
+         round(sum(a.OUTPUT_BYTES) / 1024 / 1024, 2) info,
+         10 keyvalue
+   from v$rman_backup_job_details a
+  where start_time between sysdate - 2 and sysdate - 1
+  order by start_time desc;
+2.将度量部署到所有的数据库实例
+3.查询收集的数据
+select distinct substr(key_value, 1, instr(key_value, '\', 1, 1) - 1) instance_name,
+       substr(key_value,
+              instr(key_value, '\', 1, 1) + 2,
+              instr(key_value, '\', 1, 2) - instr(key_value, '\', 1, 1) - 2) input_size_mb,
+       substr(key_value, instr(key_value, '\', 1, 2) + 2) out_size_mb
+  from mgmt$alert_history
+ where metric_name = 'ME$rman_backup_size'
+   and alert_state = 'Warning'
+   order by instance_name;
+
+
+OMS10g：
+1.在系统zkdj上新建自定义度量rman_backup_size
+  select min((select instance_name from v$instance)) || ',' ||
+         round(sum(a.INPUT_BYTES) / 1024 / 1024, 2) || ',' ||
+         round(sum(a.OUTPUT_BYTES) / 1024 / 1024, 2) info,
+         10 keyvalue
+   from v$rman_backup_job_details a
+  where start_time between sysdate - 2 and sysdate - 1
+  order by start_time desc;
+2.根据zkdj上的度量rman_backup_size，新建监视模板rman_backup_size，将该模板下发到所有数据库实例
+3.查询收集的数据
+select distinct substr(key_value2, 1, instr(key_value2, ',', 1, 1) - 1) instance_name,
+       substr(key_value2,
+              instr(key_value2, ',', 1, 1) + 1,
+              instr(key_value2, ',', 1, 2) - instr(key_value2, ',', 1, 1) - 1) input_size_mb,
+       substr(key_value2, instr(key_value2, ',', 1, 2) + 1) out_size_mb
+  from mgmt$alert_history
+ where alert_state = 'Warning'
+   and key_value = 'rman_backup_size'
+   order by instance_name; 
+
+
+###############  回退步骤  ###############
+OMS12c：
+1.删除度量rman_backup_size
+
+OMS10g：
+1.将监视模板rman_backup_size的【收集调度】改为【禁用】
+2.将监视模板rman_backup_size下发到所有数据库实例
+3.对每个系统，删除自定义度量rman_backup_size
+
+
+

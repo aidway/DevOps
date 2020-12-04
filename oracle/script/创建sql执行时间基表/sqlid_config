@@ -1,0 +1,7 @@
+## 实例名(只能填写一个实例名，实例名区分大小写)
+instance_name=ZKDJ
+
+## sql_id列表,可填写多个sql，以英文逗号分隔
+sql_id=fhycapkuk5va7,3ms7znkpvfdz4,2vq8ch0pmqvjy,6q2tb1grfvdsy,dq727fxnn53q4,c0bwfnf3uxfah,1qnc7bqsbrbru,2gq59vxagxav5,833vu2ypt2hmk,gnvrvsacctj3n
+
+

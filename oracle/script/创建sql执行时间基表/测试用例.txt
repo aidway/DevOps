@@ -1,0 +1,27 @@
+10.200.4.185：aix
+## 实例名(只能填写一个实例名，实例名区分大小写)
+instance_name=ZKDJ
+
+## sql_id列表,可填写多个sql，以英文逗号分隔
+sql_id=fhycapkuk5va7,3ms7znkpvfdz4,2vq8ch0pmqvjy,6q2tb1grfvdsy,dq727fxnn53q4,c0bwfnf3uxfah,1qnc7bqsbrbru,2gq59vxagxav5,833vu2ypt2hmk,gnvrvsacctj3n
+
+
+
+
+10.1.243.3：hp-ux
+## 实例名(只能填写一个实例名，实例名区分大小写)
+instance_name=PLMS
+
+## sql_id列表,可填写多个sql，以英文逗号分隔
+sql_id=7vgmvmy8vvb9s,a7h0gc1nckyam,6ssrk2dqj7jbx,d92h3rjp0y217,a612u8bvhubdv,16zn2ubuyftuz,g2wr3u7s1gtf3,66gs90fyynks7,70vs1d7ywk5m0,dnwpm0gdccrph
+
+
+
+
+10.200.100.25：linux
+## 实例名(只能填写一个实例名，实例名区分大小写)
+instance_name=wlsm
+
+## sql_id列表,可填写多个sql，以英文逗号分隔
+sql_id=a612u8bvhubdv,16zn2ubuyftuz ,6ajkhukk78nsr,66gs90fyynks7,5dfmd823r8dsp,2xucgknahj256,84k66tf2s7y1c,5ms6rbzdnq16t,520mkxqpf15q8,5wxkgdxngd6v4
+

@@ -1,0 +1,72 @@
+正确解读执行计划的方式：构造执行计划树形图-->后续遍历
+对于鹤立鸡群的sql，跑个@?/rdbms/admin/awrsqrpt
+
+
+1.explain plan for sql...
+  @?/rdbms/admin/utlxpls
+
+  不实际执行sql，执行计划未必真实
+  必须要有plan_table
+
+2.sqlplus  autotrace
+  除set autot traceonly explain外均执行sql，但未必真实
+  必须要有plan_table
+
+
+3.sql trace 
+  需要启用10046事件或sql_trace
+  一般使用tkprof查看
+
+
+4.v$sql、v$sql_plan
+select operation, options, object_name, cost
+  from v$sql a, v$sql_plan b
+ where a.sql_id = '3phfrgrq2d81d'
+   and a.address = b.address
+   and a.hash_value = b.hash_value;
+
+
+5.dbms_xplan包
+  display:explain plan，来自plan table
+  display_cursor:Real plan，来自shared pool中的游标缓存
+  display_awr:history，awr仓库基表wrh$_sql_plan
+  display_sqlset:sql tuning set，sql set视图
+
+
+
+示例：
+1.最简单：set autot 
+set autot traceonly stat exp
+
+
+2.次简单：explain plan for
+explain plan for select * from scott.emp;
+select * from table(dbms_xplan.display);
+@?/rdbms/admin/utlxpls
+
+
+3.最后一条sql的执行计划
+set serveroutput off
+alter session set statistics_level=all;      --不设置无法获得A-ROWS等信息
+select * from table(dbms_xplan.display_cursor(null,null,'ADVANCED ALLSTATS LAST PEEKED_BINDS'));  --sql_id为空的话默认执行最后一条sql
+
+
+4.历史执行计划
+select  * from table(dbms_xplan.display_awr('5sqz3mcggz1p6',null,null,'ADVANCED'));
+
+5.当前执行计划
+select * from table(dbms_xplan.display_cursor('4vak44m1h6f9t',null,'ADVANCED ALLSTATS LAST PEEKED_BINDS')); 
+
+
+
+附：获取sql的sql_id
+set line 200 pages 999
+col sql_id for a15
+col sql_text for a40
+select /* mysql */ * from emp;		-- 为了方便定位sql，可添加注释
+select sql_id,sql_text from v$sql where sql_text like '%mysql%';
+select * from table(dbms_xplan.display_cursor('4vak44m1h6f9t',null,'ALLSTATS'));
+
+
+
+

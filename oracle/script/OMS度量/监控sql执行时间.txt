@@ -1,0 +1,106 @@
+变更原因：监控生产系统应用用户中执行时间变长或单次执行时间较长的sql
+
+
+
+变更目标：新增两个度量：sql_per_elapsed_time_delay、sql_per_elapsed_time_long
+          sql_per_elapsed_time_delay：监控最近执行的单次执行时间在Top5中的sql，如果执行时间是历史平均执行时间的5倍（或以上），则报【警告】，
+		                              重复频率为每两小时一次。
+          sql_per_elapsed_time_long：监控最近执行的sql中单次执行时间超过30min的sql，如果超过30min，则报【警告】，重复频率为每一小时一次。
+		  
+		 
+
+		 
+变更步骤：
+1.新建度量(OMS10g和OMS12c)：sql_per_elapsed_time_delay
+select round(avg_elapsed_time_now /
+             nvl((select avg(ELAPSED_TIME_delta /
+                            decode(executions_delta, 0, 1, executions_delta))
+                    from dba_hist_sqlstat b
+                   where a.sql_id = b.sql_id),
+                 avg_elapsed_time_now)) elapsed_time_rate,
+       'sql_id: ' || a.sql_id || ',sql_text:' || substr(sql_text, 1, 200) ||
+       ',avg_elapsed_time:' || round(avg_elapsed_time_now / 1000000 / 60) || 'min' info
+  from (select v.sql_id,
+               v.sql_text,
+               round(v.elapsed_time / decode(v.executions, 0, 1, v.executions)) avg_elapsed_time_now,
+               rank() over(order by v.elapsed_time / decode(v.executions, 0, 1, v.executions) desc) elapsed_rank
+          from v$sql v
+         where parsing_schema_name not in
+           ('MONITOR','SYS','SYSTEM','SYSMAN','DIP','TSMSYS','MGMT_VIEW','ORDSYS',
+            'SCOTT','DBSNMP','ORACLE_OCM','OUTLN','SQLTXPLAIN','WMSYS','CTXSYS',
+            'APPQOSSYS','SI_INFORMTN_SCHEMA','XDB','PERFSTAT','ACCOUNT','ANONYMOUS','DMSYS',
+            'EXFSYS','MDDATA','MDSYS','OLAPSYS','ORDPLUGINS')
+           and parsing_schema_name not like  'QUERY\_%' escape '\' ) a
+ where elapsed_rank <= 5;
+ 
+ 
+2.新建度量(OMS10g和OMS12c)：sql_per_elapsed_time_long
+select per_elapsed_time,
+       'sql_id: ' || a.sql_id || ',sql_text:' || substr(sql_text, 1, 200) ||
+       ',per_elapsed_time:' || per_elapsed_time || 'min' info
+  from (select v.sql_id,
+               v.sql_text,
+               v.elapsed_time,
+               round(v.elapsed_time / decode(executions, 0, 1, executions) / 1000000 / 60) per_elapsed_time,
+               executions,
+               rank() over(order by v.elapsed_time / decode(executions, 0, 1, executions) desc) elapsed_rank
+          from v$sql v
+         where parsing_schema_name not in
+           ('MONITOR','SYS','SYSTEM','SYSMAN','DIP','TSMSYS','MGMT_VIEW','ORDSYS',
+            'SCOTT','DBSNMP','ORACLE_OCM','OUTLN','SQLTXPLAIN','WMSYS','CTXSYS',
+            'APPQOSSYS','SI_INFORMTN_SCHEMA','XDB','PERFSTAT','ACCOUNT','ANONYMOUS','DMSYS',
+            'EXFSYS','MDDATA','MDSYS','OLAPSYS','ORDPLUGINS')
+           and parsing_schema_name not like  'QUERY\_%' escape '\') a
+ where elapsed_rank <= 5;
+
+3.将实例目标部署到度量sql_per_elapsed_time_delay和sql_per_elapsed_time_long
+
+
+
+
+
+回退步骤：
+1.对度量sql_per_elapsed_time_delay和sql_per_elapsed_time_long，取消部署的实例目标
+2.删除度量：sql_per_elapsed_time_delay和sql_per_elapsed_time_long
+
+
+
+
+
+
+
+
+
+
+
+
+--1.当前top sql的执行时间和历史平均执行时间的比率
+select ceil(a.elapsed_time / decode(a.executions, 0, 1, a.executions) /
+             nvl((select avg(ELAPSED_TIME_delta / decode(executions_delta, 0, 1, executions_delta))
+                    from dba_hist_sqlstat b
+                   where a.sql_id = b.sql_id),
+                 a.elapsed_time / decode(a.executions, 0, 1, a.executions))) elapsed_time_rate,
+       'sql_id: ' || a.sql_id || ',sql_text:' || substr(sql_text, 1, 200) ||
+       ',avg_elapsed_time:' || ceil(elapsed_time / executions / 1000000) ||
+       'min' info
+  from (select v.sql_id,
+               v.sql_text,
+               v.elapsed_time,
+               executions,
+               rank() over(order by v.elapsed_time / decode(v.executions, 0, 1, v.executions) desc) elapsed_rank
+          from v$sql v) a
+ where elapsed_rank <= 5;
+ 
+--2.单次执行时间 
+select   ceil(elapsed_time / decode(executions, 0, 1, executions)/1000000) per_elapsed_time,
+         'sql_id: ' || a.sql_id || ',sql_text:' || substr(sql_text, 1, 200) ||
+         ',per_elapsed_time:' || ceil(elapsed_time / decode(executions, 0, 1, executions)/1000000) 
+         || 'min' info
+  from (select v.sql_id,
+               v.sql_text,
+               v.elapsed_time,
+               v.elapsed_time / decode(executions, 0, 1, executions) per_elapsed_time,
+               executions,
+               rank() over(order by v.elapsed_time / decode(executions, 0, 1, executions) desc) elapsed_rank
+          from v$sql v) a
+ where elapsed_rank <= 5;

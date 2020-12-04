@@ -1,0 +1,23 @@
+变更步骤：
+1.OMS上sysman用户下建立外部表(p_monthly_cap、p_monthly_space)，并为mgmt_view用户建立同义词、赋权
+  create_exttb.sh
+  grant.sh
+2.OMS上部署运行extract_data.sh脚本，抽取topa上个月数据
+  extract_data.sh
+3.编辑日报，添加元素：容量指标汇总信息、表空间增长趋势信息
+  日报查询.sql
+
+
+
+
+
+回退步骤：
+1.OMS上删除外部表、数据库中的目录、同义词
+  sqlplus / as sysdba
+  drop table sysman.p_monthly_cap;
+  drop table sysman.p_monthly_space;
+  drop directory exttab_monthly_report_dir;
+  drop synonym  MGMT_VIEW.P_MONTHLY_SPACE;
+  drop synonym  MGMT_VIEW.P_MONTHLY_CAP;
+2.删除外部表文件
+  rm -rf /arch/monthly_report
