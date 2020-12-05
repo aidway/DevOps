@@ -1,0 +1,2 @@
+使用RMAN进行recover操作前，一定要检查数据库是否存在Nologging的表，对Nologging的表进行recover将导致数据库坏块。
+select distinct owner,table_name from dba_tables where logging='NO';

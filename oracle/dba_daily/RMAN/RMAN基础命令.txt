@@ -1,0 +1,33 @@
+-- 查看备份
+list backup;
+list copy;
+
+
+-- 查看设置
+show all
+
+
+-- 查看过期备份文件
+report obsolete;
+
+
+-- 删除过期文件
+delete obsolete;
+
+
+-- 压缩备份数据库
+backup as compressed backupset database;
+
+
+-- 备份归档日志
+backup archivelog all;
+
+
+-- 备份数据库、归档日志，同时删除归档日志
+backup database plus archivelog delete input;
+
+
+-- 文件检查
+crosscheck backup;
+crosscheck archivelog all;
+crosscheck copy;

@@ -1,0 +1,39 @@
+1. 以Oracle用户登录，确认当前实例名正确：
+echo $ORACLE_SID
+
+2. 在shell下启动RMAN工具。
+rman target /
+
+3. 在RMAN> 提示符下，删除最近一天内产生的归档日志
+RMAN> delete noprompt force archivelog all completed after 'sysdate-1';
+
+
+-- 删除2天前的，即保留2天以内的
+delete noprompt force archivelog all completed before  'sysdate-20';
+
+其中
+sysdate-1/24 = 最近1小时， 以此类推：sysdate-2/24 = 最近2小时， sysdate-1/48 = 最近半小时
+
+
+4. 退出RMAN> 
+RMAN> exit
+
+
+##注意：
+1. rman命令不会删除正在生成的归档日志，不会对归档进程造成影响。
+2. 使用rman命令完成归档删除后，不需要运行crosscheck，下次备份可以自动跳过已经删除的日志。
+3. 一旦删除归档，应尽快完成一次0级备份，以保证备份有效性。
+
+
+
+删除过期的备份集 / 拷贝
+delete noprompt expired backup;
+delete noprompt expired copy;
+delete noprompt obsolete;
+
+
+-- 删除所有的归档
+rman target /
+delete noprompt force archivelog all completed before  'sysdate';
+
+
