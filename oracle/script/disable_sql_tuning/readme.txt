@@ -1,0 +1,2 @@
+脚本作用：关闭Oracle10g或Oracle11g的sql tuning advisor功能，该脚本将关闭一台服务器上所有实例的sql tuning advisor功能。
+使用方法：使用启动oracle数据库的用户运行该脚本即可（sh disable_sql_tuning.sh）。

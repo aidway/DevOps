@@ -1,0 +1,45 @@
+一般在OLAP环境中，大表在进行全表扫描的时候一般会出现direct path read等待事件，如果在OLTP环境中，出现大量的direct path read直接路径读取，这样就有问题了。一般在OLTP中，都是事务型的sql，如果想sql执行效率，那么最好从内存当中读取数据，直接从数据文件中读取，后果可想而知了。这里就可能需要我们禁用direct path read。
+
+set line 200
+col name for a30
+col describ for a40
+col value for a30
+SELECT x.ksppinm NAME, y.ksppstvl VALUE, x.ksppdesc describ
+     FROM SYS.x$ksppi x, SYS.x$ksppcv y
+    where x.indx = y.indx
+    AND (x.ksppinm ='_small_table_threshold'  or x.ksppinm='_serial_direct_read');
+NAME                           VALUE                          DESCRIB
+------------------------------ ------------------------------ ----------------------------------------
+_small_table_threshold         2522                           lower threshold level of table size for
+                                                              direct reads
+
+_serial_direct_read            auto                           enable direct read in serial
+	
+可以看到默认_serial_direct_read参数为auto，那么在oracle中，什么样的表会被断定为大表？可以看到_small_table_threshold隐含参数，其value为2522，
+单位是block，默认值是db cache size的2%大小，这个是在实例启动的时候动态决定的。
+在11gr2之后，当一个表的块数大于_small_table_threshold的时候，就被判定为大表，否则就视为小表。
+对于大表，在进行全表扫描的时候，oracle会根据_serial_direct_read的值来确定是否执行direct path read，如果值为auto，那就会direct path read。
+
+使用10949事件禁用direct path read：
+SQL> Alter system set event='10949 TRACE NAME CONTEXT FOREVER, level 1' scope=spfile; 
+ 
+
+使用alter命令禁用direct path read：
+SQL> alter session set "_serial_direct_read"=false;
+
+
+开启direct path read：
+SQL>  alter session set "_serial_direct_read"=auto;
+ 
+
+还有一个参数 _very_large_object_threshold 用于设定（MB单位）使用direct path read方式的上限，这个参数需要结合10949事件共同发挥作用。
+10949 事件设置任何一个级别都将禁用direct path read的方式执行full table scan，但是仅限于小于 5 倍 BUFFER Cache的数据表，同时，如果一个表的大小大于 0.8 倍的 _very_large_object_threshold  设置，也会执行direct path read.
+
+
+
+Please note "direct path read" can't be eliminated under the below situations: 
+
+Sort IO (when a sort does not fit in memory) 
+Parallel Query slaves 
+Readahead (where a process may issue an IO request for a block it expects to need in the near future) 
+

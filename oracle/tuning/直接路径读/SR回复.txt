@@ -1,0 +1,8 @@
+Yes, you can use also the event: 
+
+init.ora: event = "10949 trace name context forever' 
+using oradebug: event 10949 trace name context forever 
+system: alter system set events '10949 trace name context forever'; 
+session: alter session set events '10949 level 1'; 
+
+The event set like that has the same effect as setting _serial_direct_read to 'never'. 

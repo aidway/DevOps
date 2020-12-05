@@ -1,0 +1,42 @@
+create or replace directory aaa as '/backup/exp';
+grant read,write on directory aaa to scott;
+
+col owner_name for a20
+col job_name for a20
+col state for a20
+select owner_name,job_name,state from DBA_DATAPUMP_JOBS;
+
+impdp cash/cash attach=$job_name
+
+
+----- 查看数据泵导入的状态
+Import> status
+
+Job: SYS_IMPORT_TABLE_02
+  Operation: IMPORT                         
+  Mode: TABLE                          
+  State: EXECUTING                      
+  Bytes Processed: 0
+  Current Parallelism: 2
+  Job Error Count: 0
+  Dump File: /backup/cash_CMPCORECHGLIST.dmp
+  
+Worker 1 Status:
+  State: WORK WAITING                   
+  
+Worker 2 Status:
+  State: EXECUTING                      
+  Object Schema: CASH
+  Object Name: CMPCORECHGLIST
+  Object Type: TABLE_EXPORT/TABLE/TABLE_DATA
+  Completed Objects: 1
+  Completed Rows: 32,143,638
+  Completed Bytes: 42,213,811,488
+  Percent Done: 100
+  Worker Parallelism: 1
+
+
+
+
+impdp  \'/ as sysdba\' attach=SYS_IMPORT_FULL_01
+impdp  EBPPCS/EBPPCS attach=SYS_IMPORT_FULL_01

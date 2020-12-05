@@ -1,0 +1,49 @@
+###############  变更步骤  ###############
+1.项目组停应用
+
+2.检查是否设置过event（已检查，未设置event）
+$> export ORACLE_SID=SMDBII
+$> sqlplus / as sysdba
+sql> col sid for a10
+sql> col name for a20
+sql> col value for a10
+sql> select sid,name,value from v$spparameter s where s.NAME='event';
+sql> exit
+
+
+3.关闭direct path read
+$> export ORACLE_SID=SMDBII
+$> sqlplus / as sysdba
+sql> show parameter name
+sql> alter system set event='10949 trace name context forever,level 1' scope=spfile sid='*';
+
+
+4.重启数据库使参数生效
+sql> shutdown immediate;
+sql> startup
+sql> exit
+
+
+5.重启应用并进行验证
+
+
+
+###############  回退步骤  ###############
+1.项目组停应用
+
+2.打开direct path read
+$> export ORACLE_SID=SMDBII
+$> sqlplus / as sysdba
+sql> show parameter name
+sql> alter system set events '10949 trace name context off' scope=spfile sid='*';
+(如果没有设置过event，或可alter system reset event scope=spfile sid='*';)
+
+3.重启数据库使参数生效
+sql> shutdown immediate;
+sql> startup
+sql> exit
+
+4.重启应用并进行验证
+ 
+
+

@@ -1,0 +1,82 @@
+注意：exp导出要注意的参数 compress
+      imp导入要注意的参数 buffer
+
+源库：10g
+目标库：11g
+
+导出：
+select username,s.DEFAULT_TABLESPACE from user_users s;
+
+select s.segment_name, s.segment_type, s.tablespace_name
+  from user_segments s;
+
+ 
+create tablespace testa datafile '/oracle/oradata/testa1.dbf' size 3G;
+create user testa identified by testa default tablespace testa;
+grant dba to testa;
+alter user testa default tablespace testa;
+create table emp as select * from scott.emp;
+ 
+
+--exp导出
+exp testa/testa@testa file=e:\testa.dmp buffer=102400
+
+
+导入：
+-- 建表空间
+create tablespace ddsdata datafile '/oradata/ddsdata1.dbf' size 20M;
+-- 建用户
+create user ddsdump identified by ddsdump ;
+-- 修改默认表空间
+alter user ddsdump default tablespace ddsdata;
+-- 赋权
+grant dba to ddsdump;
+-- 回收unlimited tablespace
+revoke unlimited tablespace from ddsdump;
+-- 分配表空间配额
+alter user ddsdump quota unlimited on ddsdata;
+
+--查看用户的表空间配额
+select * from user_ts_quotas;
+-- 查看默认表空间
+select username, s.default_tablespace from user_users s;
+-- 查看数据导入到哪个表空间
+select s.segment_name, s.segment_type, s.tablespace_name
+  from user_segments s;
+-- 查看用户的表 
+select * from user_tables;
+ 
+--imp导入
+imp testb/testb@testb file=e:\testa.dmp buffer=102400 feedback=1000 ignore=y grants=n fromuser=testa touser=testb 
+
+ 
+
+imp \'/ as sysdba\'  file=/ora10g/dmp/exp1.dmp fromuser=sunyard touser=sunyard  
+
+
+exp WLSMONITOR/WLSMONITOR tables=WTCCONN_RT file=/databackup/WTCCONN_RT_201506.dmp log=/databackup/WTCCONN_RT_201506.log query='"where ctime between \'2015-06-01\' and \'2015-06-30\'"' buffer=999999999
+
+
+exp pcs/pcs tables=tb_machine file=/oracle/test/tb_machine.dmp log=/oracle/test/tb_machine_exp.log query=\"where status=1 and to_date\(lastoprtime, \'YYYYMMDDHH24MISS\'\) \< Sysdate - 30\" statistics=none
+
+
+
+如果dmp文件太大，imp时可能undo会满，可用imp .... buffer=1024000000 commit=y
+
+
+
+/dmdoccs/touchantest/201603/doccs.par
+------------------------------------------------------
+tables=bak_det_settlement_rea
+file=/dmdoccs/touchantest/201603/baksettlement_rea.dmp
+log=/dmdoccs/touchantest/201603/bakfull.log
+buffer=999999999  
+query=" where DATE_ID  BETWEEN TO_DATE('2011-01-01','YYYY-MM-DD') AND TO_DATE('2016-01-01','YYYY-MM-DD') "
+
+exp doccs/doccs@CRDS parfile=/dmdoccs/touchantest/201603/doccs.par
+
+
+
+
+
+
