@@ -1,4 +1,4 @@
-# 通过dockerfile构建镜像。
+## 通过dockerfile构建镜像
 
 
 　基本准则：
