@@ -1,0 +1,46 @@
+加密机TPS不稳问题分析
+
+2015-08-14 17:24:34
+问题描述：从密钥池表ICARDKMS.RSAKEYPOOL中随机取出一条记录，然后删除该记录。在表数据500万的时候tps是80左右，然后使用delete操作删除300万记录，
+在表数据200万的时候tps是67左右。
+500万时AWR见2015081401.html
+200万时AWR见2015081402.html
+tps信息见2015081403.jpg
+
+分析：影响tps的关键是取密钥的效率，而且前后测试过程只有密钥池表的数据量发生变化，因此分析前后测试的awr，发现200万时取密钥的sql在执行时间和资源
+消耗方面都有明显增加。
+
+取密钥的sql如下：
+SELECT unbatchNo, unseqNo
+  FROM ICARDKMS.RSAKEYPOOL SAMPLE(1)
+ WHERE rownum = 1
+   AND unlength = 1408;
+分析：使用delete删数后，表中的数据物理上分布松散，高水位线不下降，而函数SAMPLE(1)是要取出总记录的1%，可能会需要更多的逻辑度才能完成。
+对表进行shrink操作，然后收集表的统计信息。
+sqlplus / as sysdba
+alter table ICARDKMS.RSAKEYPOOL enable row movement;
+alter table ICARDKMS.RSAKEYPOOL shrink space;
+alter table ICARDKMS.RSAKEYPOOL disable row movement;
+exec dbms_stats.gather_table_stats(ownname=>'ICARDKMS',tabname=>'RSAKEYPOOL',estimate_percent=>20,method_opt=>'FOR ALL INDEXED COLUMNS',cascade=>TRUE);
+该步做完后重新测试200万的情况，tps平均87，tps信息见2015081404.jpg
+
+#########################  给项目组的建议  #########################  
+1.取密钥sql的影响
+取密钥的sql如下：
+SELECT unbatchNo, unseqNo
+  FROM ICARDKMS.RSAKEYPOOL SAMPLE(1)
+ WHERE rownum = 1
+   AND unlength = 1408;
+该sql使用了SAMPLE(1)函数，该语句返回的结果是总记录数的1%，然后取出第一行。
+该语句的执行效率会影响tps的值，但是由于使用了SAMPLE(1)函数，所以sql的执行效率
+也会受函数的影响。建议项目组根据业务改造sql，在不使用函数SAMPLE(1)的情况下测试tps。
+SAMPLE函数是封装的，不明确该函数具体如何进行计算取数。
+
+2.表RSAKEYPOOL空块较多
+项目组使用delete方式将表RSAKEYPOOL由500万降到200万，但是表的高水位线仍保留在500万数据量处，
+同时，delete后表中数据在物理上分布松散，导致取密钥的sql需要扫描更多的数据块才能返回总结果的1%，
+增加了逻辑读的数量。新增密钥会重用原来表分配的空间，如果消耗密钥的同时能够及时补充密钥，不会出现tps下降的情况。
+建议项目组通过以下方式对该原因进行验证：测试时使用truncate清理表RSAKEYPOOL，然后重新插入200万密钥，或者在delete数据后对表进行shrink操作。
+#########################  给项目组的建议  #########################  
+
+

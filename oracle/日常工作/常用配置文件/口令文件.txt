@@ -1,0 +1,12 @@
+oracle@PLMS:[/oracle/product/10.2.0/dbs]$orapwd
+Usage: orapwd file=<fname> password=<password> entries=<users> force=<y/n> nosysdba=<y/n>
+
+  where
+    file - name of password file (mand),
+    password - password for SYS (mand),
+    entries - maximum number of distinct DBA,
+    force - whether to overwrite existing file (opt),
+    nosysdba - whether to shut out the SYSDBA logon (opt for Database Vault only).
+  There are no spaces around the equal-to (=) character.
+oracle@PLMS:[/oracle/product/10.2.0/dbs]$orapwd file=orapwPLMS password=oracle entries=5
+

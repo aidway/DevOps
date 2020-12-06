@@ -1,0 +1,5 @@
+2016-03-11
+
+window服务器，安装了64位软件和32位的客户端，在本地使用sqlplus / as sysdba登录时报ora-12560，然后设置ORACLE_HOME和ORACLE_SID后报
+ora-12557，在其它机器通过网络方式登录正常，说明数据库正常。然后在服务器本地，将目录切换到$ORACLE_HOME/bin下使用sqlplus /  as sysdba登录，
+结果正常，怀疑PATH环境变量设置有误，经检查，在PATH中同时设置了数据库和客户端的环境变量，将客户端的环境变量删除后正常。

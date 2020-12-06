@@ -1,0 +1,18 @@
+SQL> select *
+  2    from cashtest.ciscustomerinfo a
+  3   where a.customid = 0000019061;
+ where a.customid = 0000019061
+       *
+ERROR at line 3:
+ORA-01722: invalid number
+
+
+customid为CHAR(21)，因此怀疑Oracle尝试在将customid转换成数字时出错。
+经查：
+SQL> select customid
+  2    from cashtest.ciscustomerinfo a
+  3  where customid='fda';
+
+CUSTOMID
+---------------------
+fda

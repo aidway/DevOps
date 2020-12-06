@@ -1,0 +1,31 @@
+####### 注意：该配置文件仅适用于单实例数据库
+
+####### 主机名，如果多于一个（没有个数限制），以英文逗号分隔
+HOSTNAME=SM-DB-TE01V
+
+####### 物理IP，如果多于一个（没有个数限制），以英文逗号分隔，要与填写的主机名一一对应
+PHYSICAL_IP=10.200.36.231
+
+####### 浮动IP
+FLOATING_IP=10.200.36.231
+
+####### oracle_home，请填写绝对路径
+ORACLE_HOME=/oracle/app/oracle/product/11.2.0.4/db_1
+
+####### 实例名，如果一台服务器有多个实例，以英文逗号分隔，且必须与监听名称(DB_LISTENER_NAME)和监听端口(DB_LISTENER_PORT)一一对应
+INSTANCE_NAME=drms,test
+
+####### 数据库监听名称，如果INSTANCE_NAME填写了多个实例，此处的数据库监听名称要与实例名一一对应
+DB_LISTENER_NAME=LISTENER_drms,listener_test
+
+####### 数据库监听端口，如果INSTANCE_NAME填写了多个实例，此处的端口要与实例名一一对应
+DB_LISTENER_PORT=1521,1522
+
+
+
+
+#######  以下为默认值  ####### 
+OMS_LISTNER_PORT=1532
+OMS_LISTENER_NAME=listener_oms
+LISTENER_HOME=${ORACLE_HOME}/network/admin
+

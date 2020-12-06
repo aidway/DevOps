@@ -1,0 +1,64 @@
+重空辅助系统数据库迁移
+
+2015-08-23
+
+安装oms10g agent时报错：
+Please specify a Unique Oracle Base directory, or remove previously installed products and their directories. Directory name should contain only valid alphanumeric characters, including '_', or '.' characters.
+
+错误提示的意思是指定oracle base或者是要删除原来安装的软件。
+
+但是重空的系统是新环境，没有装过oms10g agent......
+
+后查/etc/oraInst.loc，找到当前数据库使用的inventory
+$> cat /etc/oraInst.loc
+inventory_loc=/oracle/oraInventory
+inst_group=dba
+
+$> cd /oracle/oraInventory
+$> ls -l
+total 0
+drwxrwxr-x    2 oracle   dba            4096 Jun 15 2012  Contents
+drwxrwxr-x    2 oracle   dba             256 Aug 23 21:09 ContentsXML
+-rwxrwxr-x    1 oracle   dba              38 Aug 23 22:09 install.platform
+drwxrwx---    3 oracle   dba            4096 Aug 23 22:09 logs
+-rwxrwxr-x    1 oracle   dba              50 Mar 19 2012  oraInst.loc
+-rwxrwxr-x    1 oracle   dba             297 Aug 23 21:52 oraInstaller.properties
+-rwxrwxr-x    1 oracle   dba            1100 Mar 19 2012  orainstRoot.sh
+drwxrwxr-x    2 oracle   dba             256 Mar 19 2012  oui
+-rwxrwxr-x    1 oracle   dba            3848 Aug 23 21:53 sessionContext.ser
+$> cd ContentsXML
+$> ls -l
+total 0
+-rwxrwxr-x    1 oracle   dba             311 Aug 23 22:09 comps.xml
+-rwxrwxr-x    1 oracle   dba             457 Aug 23 22:02 inventory.xml
+-rwxrwxr-x    1 oracle   dba             274 Aug 23 22:09 libs.xml
+$> cat inventory.xml
+<?xml version="1.0" standalone="yes" ?>
+<!-- Copyright (c) 2009 Oracle Corporation. All rights Reserved -->
+<!-- Do not modify the contents of this file by hand. -->
+<INVENTORY>
+<VERSION_INFO>
+   <SAVED_WITH>10.2.0.5.0</SAVED_WITH>
+   <MINIMUM_VER>2.1.0.6.0</MINIMUM_VER>
+</VERSION_INFO>
+<HOME_LIST>
+<HOME NAME="OUIHome1" LOC="/oracle/product/10.2.0" TYPE="O" IDX="1"/>
+<HOME NAME="agent10g" LOC="/oma/agent10g" TYPE="O" IDX="2"/>
+</HOME_LIST>
+</INVENTORY>
+
+原来如此，在inventory.xml中记录了安装过的oracle产品，将该文件先备份，然后删除此行，重新安装，问题解决。
+但是还有一点很奇怪，安装完agent后实例等目标自动添加完了，perfect！beautiful！简直不可思议!谁做的？反正不是我。
+
+
+
+项目组在weblogic用户下使用sqlldr，报错，然后直接chmod -R 755，把$ORACLE_HOME下所有文件的权限全都改了。
+就算怀疑是权限问题，即便真的要在生产上执行，为什么不能只修改sqlldr一个文件，而是要修改所有的文件？
+我只能说这是无知者无畏。程序员，需要了解一点点运维的知识。最起码要懂得不要给运维人员制造麻烦。
+后执行relink操作，执行后检查$ORACLE_HOME/bin下可执行文件的权限，貌似是改过来了，oracle文件的权限是7451。
+
+
+另外，在该app-db拆分过程中，将app迁移到新环境的代价会更小，但是当时我未考虑该问题。项目组和管理员说把db迁移到新的环境，
+但是我并没有深思为什么要把db迁移出来，也就没有提出把app迁移到新的环境这个建议，这个是失误，仍然是没考虑为什么要做这件事，
+能不能不做，有没有别的方式实现。
+

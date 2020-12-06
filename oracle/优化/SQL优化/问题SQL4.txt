@@ -1,0 +1,187 @@
+2015-09-09
+
+ecif sql优化，通过查询，该sql有三个执行计划，其实使用索引T01_CUST_INFO_IDXNOR2时执行最快。详见附件1。
+select /*+ index(T01_CUST_INFO,T01_CUST_INFO_IDXNOR2) */ ECIF_CUST_NO, CERT_TYPE, CERT_NO, PARTY_NAME
+  from T01_CUST_INFO
+ where ((CERT_TYPE = :b4 and CERT_NO = :b5) and PARTY_NAME = :b6)
+   and UPDATED_TS = TO_DATE('99991231', 'YYYYMMDD');
+
+-- 查询历史执行计划
+select  * from table(dbms_xplan.display_awr('66ta4tajxj13h',null,null,'ADVANCED'));
+
+
+-- 附件1
+SQL> select  * from table(dbms_xplan.display_awr('66ta4tajxj13h',null,null,'ADVANCED'));
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SQL_ID 66ta4tajxj13h
+--------------------
+select ECIF_CUST_NO ,CERT_TYPE ,CERT_NO ,PARTY_NAME into :b0,:b1,:b2,:b3  from T01_CUST_INFO where (((CERT_TYPE=:b4
+and CERT_NO=:b5) and PARTY_NAME=:b6) and UPDATED_TS=TO_DATE('99991231','YYYYMMDD'))
+
+Plan hash value: 264747361
+
+----------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                          | Name                  | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+----------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                   |                       |       |       |   698 (100)|          |       |       |
+|   1 |  TABLE ACCESS BY GLOBAL INDEX ROWID| T01_CUST_INFO         |     1 |    59 |   698   (0)| 00:00:09 | ROW L | ROW L |
+|   2 |   INDEX SKIP SCAN                  | T01_CUST_INFO_IDXNOR3 |    19 |       |   679   (0)| 00:00:09 |       |       |
+----------------------------------------------------------------------------------------------------------------------------
+
+Query Block Name / Object Alias (identified by operation id):
+-------------------------------------------------------------
+
+   1 - SEL$1 / T01_CUST_INFO@SEL$1
+   2 - SEL$1 / T01_CUST_INFO@SEL$1
+
+Outline Data
+-------------
+
+  /*+
+      BEGIN_OUTLINE_DATA
+      IGNORE_OPTIM_EMBEDDED_HINTS
+      OPTIMIZER_FEATURES_ENABLE('10.2.0.4')
+      ALL_ROWS
+      OUTLINE_LEAF(@"SEL$1")
+      INDEX_SS(@"SEL$1" "T01_CUST_INFO"@"SEL$1" ("T01_CUST_INFO"."CREATE_ACCT_ORG" "T01_CUST_INFO"."PARTY_NAME"
+              "T01_CUST_INFO"."UPDATED_TS"))
+      END_OUTLINE_DATA
+  */
+
+Peeked Binds (identified by position):
+--------------------------------------
+
+   1 - :B4 (CHAR(30), CSID=852): 'CC01000151'
+   2 - :B5 (CHAR(30), CSID=852): '410802196208092515'
+   3 - :B6 (CHAR(30), CSID=852): '周栓成'
+
+Note
+-----
+   - SQL profile "coe_66ta4tajxj13h_4160522735" used for this statement
+
+SQL_ID 66ta4tajxj13h
+--------------------
+select ECIF_CUST_NO ,CERT_TYPE ,CERT_NO ,PARTY_NAME into :b0,:b1,:b2,:b3  from T01_CUST_INFO
+where (((CERT_TYPE=:b4 and CERT_NO=:b5) and PARTY_NAME=:b6) and
+UPDATED_TS=TO_DATE('99991231','YYYYMMDD'))
+
+Plan hash value: 471491762
+
+-----------------------------------------------------------------------------------------------------
+| Id  | Operation           | Name          | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+-----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT    |               |       |       |   605K(100)|          |       |       |
+|   1 |  PARTITION RANGE ALL|               |     1 |    96 |   605K  (2)| 02:01:01 |     1 |    12 |
+|   2 |   TABLE ACCESS FULL | T01_CUST_INFO |     1 |    96 |   605K  (2)| 02:01:01 |     1 |    12 |
+-----------------------------------------------------------------------------------------------------
+
+Query Block Name / Object Alias (identified by operation id):
+-------------------------------------------------------------
+
+   1 - SEL$1
+   2 - SEL$1 / T01_CUST_INFO@SEL$1
+
+Outline Data
+-------------
+
+  /*+
+      BEGIN_OUTLINE_DATA
+      IGNORE_OPTIM_EMBEDDED_HINTS
+      OPTIMIZER_FEATURES_ENABLE('10.2.0.4')
+      ALL_ROWS
+      OUTLINE_LEAF(@"SEL$1")
+      FULL(@"SEL$1" "T01_CUST_INFO"@"SEL$1")
+      END_OUTLINE_DATA
+  */
+
+Peeked Binds (identified by position):
+--------------------------------------
+
+   1 - :B4 (CHAR(30), CSID=852): 'CC01000151'
+   2 - :B5 (CHAR(30), CSID=852): '220104197703259224'
+   3 - :B6 (CHAR(30), CSID=852): '刘香好'
+
+Note
+-----
+   - dynamic sampling used for this statement
+
+SQL_ID 66ta4tajxj13h
+--------------------
+select ECIF_CUST_NO ,CERT_TYPE ,CERT_NO ,PARTY_NAME into :b0,:b1,:b2,:b3  from T01_CUST_INFO where (((CERT_TYPE=:b4
+and CERT_NO=:b5) and PARTY_NAME=:b6) and UPDATED_TS=TO_DATE('99991231','YYYYMMDD'))
+
+Plan hash value: 4160522735
+
+----------------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                          | Name                  | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+----------------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                   |                       |       |       |     5 (100)|          |       |       |
+|   1 |  TABLE ACCESS BY GLOBAL INDEX ROWID| T01_CUST_INFO         |     1 |    59 |     5   (0)| 00:00:01 | ROW L | ROW L |
+|   2 |   INDEX RANGE SCAN                 | T01_CUST_INFO_IDXNOR2 |     1 |       |     4   (0)| 00:00:01 |       |       |
+----------------------------------------------------------------------------------------------------------------------------
+
+Query Block Name / Object Alias (identified by operation id):
+-------------------------------------------------------------
+
+   1 - SEL$1 / T01_CUST_INFO@SEL$1
+   2 - SEL$1 / T01_CUST_INFO@SEL$1
+
+Outline Data
+-------------
+
+  /*+
+      BEGIN_OUTLINE_DATA
+      IGNORE_OPTIM_EMBEDDED_HINTS
+      OPTIMIZER_FEATURES_ENABLE('10.2.0.4')
+      ALL_ROWS
+      OUTLINE_LEAF(@"SEL$1")
+      INDEX_RS_ASC(@"SEL$1" "T01_CUST_INFO"@"SEL$1" ("T01_CUST_INFO"."CERT_NO"))
+      END_OUTLINE_DATA
+  */
+
+Peeked Binds (identified by position):
+--------------------------------------
+
+   1 - :B4 (CHAR(30), CSID=852): 'CC01000151'
+   2 - :B5 (CHAR(30), CSID=852): '220104197703259224'
+   3 - :B6 (CHAR(30), CSID=852): '刘香好'
+
+
+133 rows selected.
+
+
+
+
+-- 索引信息
+SQL> select s.table_name,s.table_owner,s.owner, s.index_name, s.status,s.uniqueness,s.logging
+  2    from dba_indexes s
+  3   where s.table_owner in ('ECIFNOR')
+  4     and s.table_name in ('T01_CUST_INFO')
+  5   order by s.table_owner,s.table_name,s.index_name;
+
+TABLE_NAME                     TABLE_OWNE OWNER      INDEX_NAME                     STATUS   UNIQUENES LOG
+------------------------------ ---------- ---------- ------------------------------ -------- --------- ---
+T01_CUST_INFO                  ECIFNOR    ECIFNOR    T01_CUST_INFO_IDXNOR1          VALID    UNIQUE    YES
+T01_CUST_INFO                  ECIFNOR    ECIFNOR    T01_CUST_INFO_IDXNOR2          VALID    NONUNIQUE YES
+T01_CUST_INFO                  ECIFNOR    ECIFNOR    T01_CUST_INFO_IDXNOR3          VALID    NONUNIQUE YES
+T01_CUST_INFO                  ECIFNOR    ECIFNOR    T01_CUST_INFO_IDXUQE1          VALID    UNIQUE    YES
+
+SQL> select TABLE_OWNER, TABLE_NAME, INDEX_NAME, COLUMN_NAME, COLUMN_POSITION
+  2    from dba_ind_columns
+  3   where table_name in ('T01_CUST_INFO')
+  4     and table_owner in ('ECIFNOR')
+  5   order by table_name, index_name,COLUMN_POSITION asc;
+
+TABLE_OWNE TABLE_NAME                     INDEX_NAME                     COLUMN_NAME                    COLUMN_POSITION
+---------- ------------------------------ ------------------------------ ------------------------------ ---------------
+ECIFNOR    T01_CUST_INFO                  T01_CUST_INFO_IDXNOR1          ECIF_CUST_NO                                 1
+ECIFNOR    T01_CUST_INFO                  T01_CUST_INFO_IDXNOR1          UPDATED_TS                                   2
+ECIFNOR    T01_CUST_INFO                  T01_CUST_INFO_IDXNOR2          CERT_NO                                      1
+ECIFNOR    T01_CUST_INFO                  T01_CUST_INFO_IDXNOR3          CREATE_ACCT_ORG                              1
+ECIFNOR    T01_CUST_INFO                  T01_CUST_INFO_IDXNOR3          PARTY_NAME                                   2
+ECIFNOR    T01_CUST_INFO                  T01_CUST_INFO_IDXNOR3          UPDATED_TS                                   3
+ECIFNOR    T01_CUST_INFO                  T01_CUST_INFO_IDXUQE1          PARTY_ID                                     1
+ECIFNOR    T01_CUST_INFO                  T01_CUST_INFO_IDXUQE1          UPDATED_TS                                   2
+

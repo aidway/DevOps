@@ -1,0 +1,59 @@
+oracle11.2.0.3的数据库，使用$ORACLE_HOME/OPatch/opatch lsinv时报错，显示的信息里oracle10g的信息，报错类似如下（模拟，非真实）：
+oracle@PLMS:[/oracle]$$ORACLE_HOME/OPatch/opatch lsinv
+Invoking OPatch 10.2.0.5.1
+
+Oracle Interim Patch Installer version 10.2.0.5.1
+Copyright (c) 2010, Oracle Corporation.  All rights reserved.
+
+
+Oracle Home       : /oracle/product/10.2.0
+Central Inventory : /oracle/oraInventory
+   from           : /var/opt/oracle/oraInst.loc
+OPatch version    : 10.2.0.5.1
+OUI version       : 10.2.0.4.0
+OUI location      : /oracle/product/10.2.0/oui
+Log file location : /oracle/product/10.2.0/cfgtoollogs/opatch/opatch2015-04-02_10-03-30AM.log
+
+Patch history file: /oracle/product/10.2.0/cfgtoollogs/opatch/opatch_history.txt
+
+OPatch failed to locate Central Inventory.
+Possible causes are: 
+    The Central Inventory is corrupted
+    The oraInst.loc file specified is not valid.
+LsInventorySession failed: OPatch failed to locate Central Inventory.
+Possible causes are: 
+    The Central Inventory is corrupted
+    The oraInst.loc file specified is not valid.
+
+OPatch failed with error code 73
+oracle@PLMS:[/oracle]$
+
+
+
+怀疑oraInventory有问题，打算重建oraInventory:
+cd $ORACLE_BASE
+cp -r oraInventory oraInventory_bak
+rm -r oraInventory
+cd $ORACLE_HOME/oui/bin
+sh attachHome.sh
+
+
+重建后再次执行$ORACLE_HOME/OPatch/opatch lsinv，成功！
+
+
+
+
+
+
+
+什么是Inventory呢？Inventory是Oracle安装工具OUI用来管理Oracle安装目录的。Inventory里注册了某个ORACLE_HOME下安装的数据库的组件及其版本。Oracle数据库软件的升级、增删组件，都需要使用Inventory。在一台服务器上，Oracle OUI会创建一个全局的Inventory，全局Inventory的目录在oraInst.loc文件中指定。根据操作系统的不同，oraInst.loc所在的目录也不一样。在AIX或者LINUX等系统中，oraInst.loc存放在/etc目录下，在有些操作系统中，这个文件存放在/var/opt/oracle目录下。
+
+在ORACLE_HOME下面也有一个Inventory目录，这个目录就是我们平时说的Local Inventory。这个Inventory是本地的，每个ORACLE_HOME所独有的。它记录了本ORACLE_HOME中OUI安装的组件的信息。
+
+
+
+
+
+
+
+

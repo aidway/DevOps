@@ -1,0 +1,32 @@
+# 定义监听
+# 监听名称: listener_smdb
+# 监听地址: 10.200.100.25
+# 监听端口: 1521
+# 含义：listener_smdb监听10.200.100.25的1521端口，如果有服务访问10.200.100.25:1521，该监听将会处理
+LISTENER_ORCL =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 192.168.1.1)(PORT = 1521))
+    )
+  )
+
+
+# 数据库服务信息  定义listener进程为哪个实例提供服务
+SID_LIST_LISTENER_ORCL =
+  (SID_LIST =
+      (SID_DESC =
+      (GLOBAL_DBNAME = ORCL)
+      (ORACLE_HOME = /oracle/product/11.2.0.3/db_1) 
+      (SID_NAME = ORCL)
+    )
+  )
+
+INBOUND_CONNECT_TIMEOUT_LISTENER=0
+
+# 关闭监听日志
+LOGGING_LISTENER_SMDB=off
+
+如果在客户端发出以下命令：
+sqlplus scott/tiger@10.200.100.25:1521/SMDB
+在10.200.100.25:1521上监听的listener_smdb将会进行处理，根据SID_LIST_LISTENER_SMDB的描述找到实例SMDB的相关信息，进而连接到SMDB实例。
+

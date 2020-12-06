@@ -1,0 +1,22 @@
+-- 配置数据库级别的附加日志
+alter database add supplemental log data;
+alter database add supplemental log data (PRIMARY KEY,FOREIGN KEY,UNIQUE) columns;
+ 
+-- 开启表级附加日志 
+ALTER TABLE  scott.emp  ADD SUPPLEMENTAL LOG DATA (PRIMARY KEY) COLUMNS;
+ALTER TABLE  scott.emp  ADD SUPPLEMENTAL LOG DATA (UNIQUE) COLUMNS;
+ALTER TABLE  scott.emp  ADD SUPPLEMENTAL LOG DATA (FOREIGN KEY) COLUMNS;
+ 
+ 
+-- 关闭数据库级附加日志 
+alter database drop supplemental log data (PRIMARY KEY,FOREIGN KEY,UNIQUE) columns;
+
+ 
+ 
+
+-- 生成删除表级附加日志的sql
+select 'alter table '||owner|| '.' ||table_name|| ' drop supplemental log group '|| log_group_name||';' from dba_log_groups where dba_log_groups.owner  in ('SCOTT');
+ 
+ 
+-- 查询附加日志的信息 
+Select SUPPLEMENTAL_LOG_DATA_MIN,SUPPLEMENTAL_LOG_DATA_PK,SUPPLEMENTAL_LOG_DATA_UI,SUPPLEMENTAL_LOG_DATA_FK from v$database;

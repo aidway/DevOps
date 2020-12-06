@@ -1,0 +1,4 @@
+catalog.sql : 创建数据字典
+catproc.sql : 创建与PL/SQL相关的脚本
+utlrp.sql   : 编译无效对象
+pupbld.sql  : system用户执行，创建SQLPLUS_PRODUCT_PROFILE表，并在该表建立相关的视图和同义词

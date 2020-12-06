@@ -1,0 +1,45 @@
+2015.6.19
+jkcj部署统计信息收集工具总结：
+1.第一次收集失败，因为oracle用户环境变量设置了set -u
+2.分析完第一次失败原因后，修改了收集脚本，在脚本的开头处也就是#!/bin/sh下加上了set +u，但是第二天观察发现依然收集失败！
+  原因在于脚本执行的时候首先会根据操作系统（aix、hp-ux、linux）的类型加载用户的环境变量，set +u应该在加载环境变量的脚本
+  后面添加，修改后，第三天观察发现收集正常。这次失败的原因是没有经过测试！
+
+归根结底，两次失败的原因都是因为没有经过测试！虽然该系统没有测试环境，但不妨用别的测试环境进行测试，完全可以避免。
+
+相关查询sql见下方：
+-- 查询表的收集信息
+select s.OWNER, s.TABLE_NAME, s.LAST_ANALYZED, s.NUM_ROWS
+  from dba_tables s
+ where s.TABLE_NAME in ('ECAS_TRAN_DATA',
+                        'T_PB_LOG',
+                        'T_EB_JOURNAL',
+                        'NTS_PUB_TRANSDTL',
+                        'NTS_PUB_RESOURCECOST',
+                        'LOG_TRAN_COM',
+                        'T_EB_JOURNAL',
+                        'T_PB_LOG',
+                        'NTS_PUB_TRANSDTL')
+ order by s.OWNER,s.TABLE_NAME;
+
+-- 查询分区的收集信息
+select s.table_owner,s.table_name,s.partition_name,s.last_analyzed,s.num_rows
+  from dba_tab_partitions s
+  where s.TABLE_NAME in ('ECAS_TRAN_DATA',
+                        'T_PB_LOG',
+                        'T_EB_JOURNAL',
+                        'NTS_PUB_TRANSDTL',
+                        'NTS_PUB_RESOURCECOST',
+                        'LOG_TRAN_COM',
+                        'T_EB_JOURNAL',
+                        'T_PB_LOG',
+                        'NTS_PUB_TRANSDTL')
+    and s.partition_name in
+        (select 'P_' || to_char(sysdate-1,'yyyymmdd') from dual                  
+         union all
+         select 'P_' || to_char(sysdate,'yyyymmdd') from dual
+         union all
+         select 'P_' || to_char(sysdate+1,'yyyymmdd') from dual)
+ order by s.table_owner,s.table_name,s.partition_name ;
+
+

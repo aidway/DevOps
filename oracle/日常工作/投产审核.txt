@@ -1,0 +1,3 @@
+1.range分区表，建索引：分区索引+local
+2.建表/索引/约束...：指定表空间
+3.alter table dept modify deptno number(3)：该语句隐含commit，如果在别的会话中对表dept正在dml，那么当前的modify会失败

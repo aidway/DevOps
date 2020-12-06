@@ -1,0 +1,202 @@
+源端：10.200.36.117
+GGSCI (P7807V10) 1> info all
+Program     Status      Group       Lag at Chkpt  Time Since Chkpt
+MANAGER     RUNNING                                           
+EXTRACT     RUNNING     DPE03       00:00:00      00:00:06    
+EXTRACT     RUNNING     EXT01       00:00:00      00:00:01
+
+GGSCI (P7807V10) 18> view param ext01
+extract ext01
+setenv ( NLS_LANG = AMERICAN_AMERICA.US7ASCII )
+USERID goldengate, PASSWORD AACAAAAAAAAAAAKAPATACEHBIGQGCFZCCDIGAEMCQFFBZHVC, ENCRYPTKEY default
+GETTRUNCATES
+EXTTRAIL ./dirdat/ex , format release 11.1
+DISCARDFILE ./dirrpt/ext01.dsc, APPEND, MEGABYTES 1024
+DBOPTIONS  ALLOWUNUSEDCOLUMN
+WARNLONGTRANS 2h,CHECKINTERVAL 3m
+FETCHOPTIONS NOUSESNAPSHOT
+TRANLOGOPTIONS  CONVERTUCS2CLOBS
+table TEST.* ;
+
+GGSCI (P7807V10) 16> view param dpe03
+extract dpe03
+USERID goldengate, PASSWORD AACAAAAAAAAAAAKAPATACEHBIGQGCFZCCDIGAEMCQFFBZHVC, ENCRYPTKEY default
+RMTHOST 10.200.8.205, MGRPORT 7809,compress
+RMTTRAIL ./dirdat/cd , format release 11.1
+WILDCARDRESOLVE DYNAMIC
+table TEST.* ;
+
+
+GGSCI (P7807V10) 22> info EXTTRAIL *
+       Extract Trail: ./dirdat/cd
+             Extract: DPE03
+               Seqno: 0
+                 RBA: 3501
+           File Size: 50M
+       Extract Trail: ./dirdat/ex
+             Extract: EXT01
+               Seqno: 3
+                 RBA: 1487
+           File Size: 50M
+
+
+GGSCI (P7807V10) 30> info EXTRACT *
+EXTRACT    DPE03     Last Started 2015-06-26 10:56   Status RUNNING
+Checkpoint Lag       00:00:00 (updated 00:00:01 ago)
+Log Read Checkpoint  File ./dirdat/ex000003
+                     2015-07-01 16:36:49.000000  RBA 1487
+EXTRACT    EXT01     Last Started 2015-07-01 16:34   Status RUNNING
+Checkpoint Lag       00:00:00 (updated 00:00:10 ago)
+Log Read Checkpoint  Oracle Redo Logs
+                     2015-07-01 16:44:41  Thread 1, Seqno 54, RBA 364980736
+                     SCN 0.11461844 (11461844)
+
+GGSCI (P7807V10) 35> info EXTRACT EXT01,showch
+EXTRACT    EXT01     Last Started 2015-07-01 16:34   Status RUNNING
+Checkpoint Lag       00:00:00 (updated 00:00:09 ago)
+Log Read Checkpoint  Oracle Redo Logs
+                     2015-07-01 17:07:55  Thread 1, Seqno 54, RBA 366943232
+                     SCN 0.11462874 (11462874)
+Current Checkpoint Detail:
+Read Checkpoint #1
+  Oracle Threaded Redo Log
+  Startup Checkpoint (starting position in the data source):
+    Thread #: 1
+    Sequence #: 54
+    RBA: 19324432
+    Timestamp: 2015-06-27 14:48:36.000000
+    SCN: 0.11228463 (11228463)
+    Redo File: /oradata/redo03a.rdo
+  Recovery Checkpoint (position of oldest unprocessed transaction in the data source):
+    Thread #: 1
+    Sequence #: 54
+    RBA: 366941712
+    Timestamp: 2015-07-01 17:07:55.000000
+    SCN: 0.11462874 (11462874)
+    Redo File: /oradata/redo03a.rdo
+  Current Checkpoint (position of last record read in the data source):
+    Thread #: 1
+    Sequence #: 54
+    RBA: 366943232
+    Timestamp: 2015-07-01 17:07:55.000000
+    SCN: 0.11462874 (11462874)
+    Redo File: /oradata/redo03a.rdo
+  BR Previous Recovery Checkpoint:
+    Thread #: 1
+    Sequence #: 0
+    RBA: 0
+    Timestamp: 2015-06-26 10:48:38.098489
+    SCN: Not available
+    Redo File: 
+  BR Begin Recovery Checkpoint:
+    Thread #: 1
+    Sequence #: 54
+    RBA: 10079232
+    Timestamp: 2015-06-27 10:48:18.000000
+    SCN: 0.11220902 (11220902)
+    Redo File: 
+  BR End Recovery Checkpoint:
+    Thread #: 1
+    Sequence #: 54
+    RBA: 10079232
+    Timestamp: 2015-06-27 10:48:18.000000
+    SCN: 0.11220902 (11220902)
+    Redo File: 
+Write Checkpoint #1
+  GGS Log Trail
+  Current Checkpoint (current write position):
+    Sequence #: 3
+    RBA: 1487
+    Timestamp: 2015-07-01 17:07:56.674577
+    Extract Trail: ./dirdat/ex
+...................
+
+GGSCI (P7807V10) 33> info EXTRACT DPE03,showch
+EXTRACT    DPE03     Last Started 2015-06-26 10:56   Status RUNNING
+Checkpoint Lag       00:00:00 (updated 00:00:08 ago)
+Log Read Checkpoint  File ./dirdat/ex000003
+                     2015-07-01 16:36:49.000000  RBA 1487
+Current Checkpoint Detail:
+Read Checkpoint #1
+  GGS Log Trail
+  Startup Checkpoint (starting position in the data source):
+    Sequence #: 0
+    RBA: 0
+    Timestamp: Not Available
+    Extract Trail: ./dirdat/ex
+  Current Checkpoint (position of last record read in the data source):
+    Sequence #: 3
+    RBA: 1487
+    Timestamp: 2015-07-01 16:36:49.000000
+    Extract Trail: ./dirdat/ex
+Write Checkpoint #1
+  GGS Log Trail
+  Current Checkpoint (current write position):
+    Sequence #: 0
+    RBA: 3501
+    Timestamp: 2015-07-01 17:00:53.852921
+    Extract Trail: ./dirdat/cd
+...................
+
+
+
+
+
+
+目标端：10.200.8.205
+
+GGSCI (P74011P2) 2> view param rep05
+replicat rep05
+setenv ( NLS_LANG = AMERICAN_AMERICA.US7ASCII )
+USERID goldengate, PASSWORD AACAAAAAAAAAAAKAPATACEHBIGQGCFZCCDIGAEMCQFFBZHVC, ENCRYPTKEY default
+SQLEXEC "ALTER SESSION SET CONSTRAINTS=DEFERRED"
+REPERROR DEFAULT, ABEND
+ASSUMETARGETDEFS
+DISCARDFILE ./dirrpt/rep05.dsc , APPEND, MEGABYTES 1024
+GETTRUNCATES
+ALLOWNOOPUPDATES
+MAP TEST.* , TARGET  TEST.* ;
+
+
+
+GGSCI (P74011P2) 7> INFO REPLICAT REP05
+REPLICAT   REP05     Last Started 2015-07-01 16:41   Status RUNNING
+Checkpoint Lag       00:00:00 (updated 00:00:00 ago)
+Log Read Checkpoint  File ./dirdat/cd000000
+                     2015-07-01 16:42:10.439099  RBA 3501
+
+
+
+
+##############################################################################################################
+edit param dpe03
+---------------------------
+extract dpe03
+USERID goldengate, PASSWORD AACAAAAAAAAAAAKAPATACEHBIGQGCFZCCDIGAEMCQFFBZHVC, ENCRYPTKEY default
+RMTHOST 10.200.8.205, MGRPORT 7809,compress
+RMTTRAIL ./dirdat/cd , format release 11.1
+WILDCARDRESOLVE DYNAMIC
+table TEST.* ;
+
+ADD EXTRACT dpe03, EXTTRAILSOURCE ./dirdat/ex
+ADD RMTTRAIL ./dirdat/cd, EXTRACT dpe03, MEGABYTES 50        --rt指目标端生成的trails日志文件开头名称，必须与PUMP配置文件中定义的一致
+
+
+
+edit param rep05
+---------------------------
+replicat rep05
+setenv ( NLS_LANG = AMERICAN_AMERICA.US7ASCII )
+USERID goldengate, PASSWORD AACAAAAAAAAAAAKAPATACEHBIGQGCFZCCDIGAEMCQFFBZHVC, ENCRYPTKEY default
+SQLEXEC "ALTER SESSION SET CONSTRAINTS=DEFERRED"
+REPERROR DEFAULT, ABEND
+ASSUMETARGETDEFS
+DISCARDFILE ./dirrpt/rep05.dsc , APPEND, MEGABYTES 1024
+GETTRUNCATES
+ALLOWNOOPUPDATES
+MAP TEST.* , TARGET  TEST.* ;
+
+
+dblogin userid goldengate password goldengate
+ADD REPLICAT rep05, EXTTRAIL ./dirdat/cd, CHECKPOINTTABLE GOLDENGATE.CHECKPOINTTABLE
+

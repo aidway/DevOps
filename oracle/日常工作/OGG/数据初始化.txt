@@ -1,0 +1,51 @@
+初始化前提条件：
+1.  确认源端和目标端服务器已安装Goldengate软件，启动manager进程。
+2.  确认源端已配置GoldenGate抽取和传输进程。
+3.  源端启动Extract、DPE进程。
+
+
+源端：
+1.查询directory目录
+set lines 190
+col owner for a20
+col directory_name  for a30
+col directory_path  for a70
+select * from dba_directories;
+
+2.如果没有可用的directory 目录，则创建：
+create or replace directory DATA_PUMP  as  '/oracle/dmp'; 
+grant read ,write on directory  DATA_PUMP  to  ebppcs; 
+
+3. 在源端数据库获取当前scn号
+select dbms_flashback.get_system_change_number from dual;
+
+4.源端数据导出
+expdp  pbcebdbtest/pbcebdbtest  directory=DATA_PUMP dumpfile=pbcebdbtest.dmp logfile=pbcebdbtest.log flashback_scn=11601218 version=10.2.0.4
+
+
+目标端：
+1. 检查当前目标端数据库的可用directory目录。
+set lines 190
+col owner for a20
+col directory_name  for a30
+col directory_path  for a70
+select * from dba_directories;
+
+2. 如果没有可用的directory 目录，则创建：
+create or replace directory  ogg_dmp_dir  as  '/oracle/dmp';
+grant read ,write on directory  ogg_dmp_dir  to  pbcebdbtest;
+
+3. 目标端数据导入
+impdp pbcebdbtest/pbcebdbtest  directory=ogg_dmp_dir dumpfile=pbcebdbtest.dmp logfile=pbcebdbtest.log
+
+4. 启动目标端的Replicat 进程
+cd  <OGG_SOFT_PATH>
+./ggsci
+GGSCI>start rep01,aftercsn 11601218
+
+
+
+
+export ORACLE_SID=rptmdb
+impdp cebrptm/cebrptm   directory=RPTM_TXN_TMP_DIR dumpfile=cebrptm_20150724.dmp logfile=cebrptm20150727.log schemas=CEBRPTM remap_tablespace=CEBRPTM:RPTM_TAB
+

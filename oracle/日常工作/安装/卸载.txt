@@ -1,0 +1,24 @@
+rm -rf /u01
+rm -rf /etc/oratab 
+rm -rf /etc/oraInst.loc 
+rm -rf /usr/local/bin/dbhome 
+rm -rf /usr/local/bin/oraenv 
+rm -rf /usr/local/bin/coraenv 
+
+
+userdel -r oracle
+groupdel oinstall
+groupdel dba	
+
+
+
+cd /oracle
+rm -rf diag
+rm -rf oraInventory
+rm -rf product
+rm -r /etc/oratab
+rm -r /etc/oraInst.loc
+rm -r /usr/local/bin/dbhome 
+rm -r /usr/local/bin/oraenv 
+rm -r /usr/local/bin/coraenv 
+

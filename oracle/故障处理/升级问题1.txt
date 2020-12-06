@@ -1,0 +1,5 @@
+2015.5.8 
+收单测试库升级，结果在执行@?/rdbms/admin/catupgrd.sql时报错，有一个package报错，当时没记。
+此时，用10g打不开数据库，因为数据库用11g打开过，控制文件已经被改了。
+用11g打开的话只能以升级方式打开，然后执行@?/rdbms/admin/utlrp.sql编译失效对象。
+然后重新执行@?/rdbms/admin/catupgrd.sql，执行成功。

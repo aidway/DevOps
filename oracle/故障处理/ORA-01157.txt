@@ -1,0 +1,19 @@
+2015-07-17
+
+ÎÊÌâ£º
+SQL> startup
+ORACLE instance started.
+
+Total System Global Area 4275781632 bytes
+Fixed Size                  2228344 bytes
+Variable Size            1778388872 bytes
+Database Buffers         2483027968 bytes
+Redo Buffers               12136448 bytes
+Database mounted.
+ORA-01157: cannot identify/lock data file 9 - see DBWR trace file
+ORA-01110: data file 9: '/oracle/product/10.2.0/SCFCEB_TB .dbf'
+
+
+SQL> alter database datafile '/oracle/product/10.2.0/SCFCEB_TB .dbf' offline drop;
+
+Database altered.

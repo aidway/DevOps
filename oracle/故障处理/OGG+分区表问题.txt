@@ -1,0 +1,89 @@
+jkcj系统split分区，由于ogg不断向MAX分区同步数据，split时报“ORA-00054: resource busy and acquire with NOWAIT specified or timeout expired”，然后把ogg停止，停止后可以成功split分区。但是split后索引无效，rebuild索引后问题解决。
+
+
+
+15:02:32 SQL> create table test(id int,name varchar2(10)) partition by range(id)
+15:03:07   2  ( partition p1 values less than(100),
+15:03:13   3  partition p2 values less than(200),
+15:03:20   4  partition pmax values less than(maxvalue));
+
+Table created.
+
+15:03:33 SQL> insert into test values(1,'test1');
+
+1 row created.
+
+15:03:50 SQL> insert into test values(101,'test1');
+
+1 row created.
+
+15:03:57 SQL> insert into test values(301,'test1');
+
+1 row created.
+
+15:04:02 SQL> commit;
+
+Commit complete.
+
+15:09:07 SQL> select * from test partition(p1);
+
+        ID NAME
+---------- ----------
+         1 test1
+
+15:09:17 SQL> select * from test partition(p2);
+
+        ID NAME
+---------- ----------
+       101 test1
+
+15:09:35 SQL> select * from test partition(pmax);
+
+        ID NAME
+---------- ----------
+       301 test1
+
+每个分区里面都有数据
+下面模拟一个连续的插入到最大分区上面
+15:09:39 SQL> declare
+15:09:47   2  i int;
+15:09:47   3  begin
+15:09:47   4  for i in 1..100 loop
+15:09:47   5  insert into test values(40*i,'test'||i);
+15:09:47   6  dbms_lock.sleep(2);
+15:09:47   7  end loop;
+15:09:47   8  commit;
+15:09:47   9  end;
+15:09:48  10  /
+这个大概执行10秒左右后插入的数据都在pmax分区里面 
+
+新开个窗口 执行 分列分区的命令
+SQL> alter table test split partition pmax at(1000) into (partition p3,partition pmx);
+alter table test split partition pmax at(1000) into (partition p3,partition pmx)
+            *
+ERROR at line 1:
+ORA-00054: resource busy and acquire with NOWAIT specified or timeout expired
+
+这结果很明显了  有数据在操作时无法分裂
+
+接下来   按个语句  再执行  这时候数据只插入在头两个分区
+
+15:14:46 SQL> declare
+15:16:40   2  i int;
+15:16:40   3  begin
+15:16:40   4  for i in 1..49 loop
+15:16:40   5  insert into test values(4*i,'test'||i);
+15:16:40   6  dbms_lock.sleep(2);
+15:16:40   7  end loop;
+15:16:40   8  commit;
+15:16:40   9  end;
+15:16:40  10  /
+
+再在另一个窗口执行
+15:17:14 SQL> alter table test split partition pmax at(1000) into (partition p3,partition pmx);
+
+Table altered.
+
+此时分裂分区成功
+
+也就是说有数据在操作那个分区时无法分裂，当数据没操作需要分裂的分区时可以拆分，从结构上来讲 每个分区本身就是不同的segment

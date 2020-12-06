@@ -1,0 +1,47 @@
+2015-11-10
+
+jkcj rep_epay进程延迟，经查询项目组对表进行了truncate操作，重启进程后，复制进程仍然后延迟。
+使用glance查看占用cpu较高的sql，发现是一个update语句，查询发现该sql的执行计划发生了变化。
+对表收集统计信息，但是执行计划还是不对。
+最后，使用脚本对执行计划进行了固化。
+http://10.1.37.119:8080/DB_Util/gen_profile.txt
+
+SQL> explain plan for  UPDATE "EPAY"."OT_TRANS" SET "TRANS_HOSTSEQNO" = :a1,"TRANS_MERSEQNO" = :a2,"TRANS_HOSTDATE" = :a4,"TRANS_MERDATE" = :a6,"TRANS_MERDATETIME" = :a7,"TRANS_ORGMERSEQNO" = :a8,"TRANS_ORGMERDATE"
+  2  = :a9,"TRANS_ORGSEQNO" = :a10,"TRANS_ORGCLEARDATE" = :a11,"TRANS_ID" = :a12,"MER_ID" = :a13,"MER_OPENDEPTID" = :a14,"MER_DEVELOPDEPTID" = :a15,"CHANNEL_ID" = :a16,"USER_CIFNO" = :a17,"USER_ACCTNO" = :a18,"USER_ACCTTYPE" = :a19,"USER_ACCTDEPTID" = :a20,"TRANS_RCVACCTNO" = :a21,"TRANS_RCVACCTDEPTID" = :a22,"TRANS_AMT" =
+  3  :a23,"TRANS_CURRENCY" = :a24,"TRANS_AMT1" = :a25,"TRANS_AMT2" =
+  4  :a26,"TRANS_AMT3" = :a27,"TRANS_AMT4" = :a28,"TRANS_FEEAMT" = :a29,"TRANS_HOSTRESPCODE" = :a30,"TRANS_RESPCODE" = :a31,"TRANS_STATUS" = :a32,"TRANS_TELLERID" = :a33,"TRANS_TERMID" = :a34,"TRANS_STEP" = :a35,"TRANS_PROCSTATUS" = :a36,"TRANS_REMARK1" = :a37,
+  5  "TRANS_REMARK2" = :a38,"TRANS_RCVACCTTYPE" = :a39,"PAY_TYPE" = :a40,"SIGN_ID" = :a41,"BATCH_NO" = :a42,"COMPACT_ID" = :a43,"VERIFY_MODE" = :a44,"CIF_FEE1" = :a45,"CIF_FEE2" = :a46,"TRANS_HOSTDATETIME" = :a47 WHERE "TRANS_SEQNO" = :b0 AND "TRANS_CLEARDATE"
+  6  = :b3 AND "TRANS_DATE" = :b5;
+
+Explained.
+
+SQL> select * from table(dbms_xplan.display);
+
+PLAN_TABLE_OUTPUT
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Plan hash value: 1518855151
+
+--------------------------------------------------------------------------------------------------------
+| Id  | Operation               | Name         | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+--------------------------------------------------------------------------------------------------------
+|   0 | UPDATE STATEMENT        |              |     1 |   264 |     3   (0)| 00:00:01 |       |       |
+|   1 |  UPDATE                 | OT_TRANS     |       |       |            |          |       |       |
+|   2 |   PARTITION RANGE SINGLE|              |     1 |   264 |     2   (0)| 00:00:01 |   KEY |   KEY |
+|*  3 |    INDEX UNIQUE SCAN    | OT_TRANSN_PK |     1 |   264 |     2   (0)| 00:00:01 |   KEY |   KEY |
+--------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - access("TRANS_SEQNO"=:B0 AND "TRANS_DATE"=:B5 AND "TRANS_CLEARDATE"=:B3)
+
+Note
+-----
+   - SQL profile "coe_c7ahr4y2n5k4t_1518855151" used for this statement
+
+19 rows selected. 
+
+
+
+3.zkdj cpu高优化 将buffer_cache_size由2G改为3G
+  部署统计信息收集工具

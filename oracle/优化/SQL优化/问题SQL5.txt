@@ -1,0 +1,101 @@
+2015-10-22
+
+对公征信sql优化 
+select   CustomerID,
+       FinanceID,
+       Currency,
+       sum(CecmBalance) as CecmBalance,
+       InterestType
+  from (select BD.CustomerID as CustomerID,
+               (select PBCODE
+                  from ecr3.ECR_CODEMAP
+                 where ColName = '6501'
+                   and CTCODE = bd.statorgid) as FinanceID,
+               nvl(BD.BusinessCurrency, '01') as Currency,
+               (case
+                 when exists (select   1
+                         from ecr_tmp_bd d
+                        where d.customerid = bd.customerid
+                          and d.structureflag = '1'
+                        group by d.customerid
+                       having sum(case
+                         when d.interestbalance1 < 0 then
+                          0.00
+                         else
+                          nvl(d.interestbalance1, 0.00)
+                       end) = 0.00) then
+                  0.00
+                 else
+                  round((case
+                          when length(BD.FinishDate) > 0 then
+                           0.00
+                          when nvl(BD.InterestBalance1, 0) < 0 then
+                           0.00
+                          else
+                           nvl(BD.InterestBalance1, 0)
+                        end),
+                        2)
+               end) as CecmBalance,
+               '1' as InterestType
+          from CECM.ECR_TMP_BD BD, ECR3.ECR_CUSTOMERINFO EC
+         where BD.CustomerID = EC.CustomerID
+           and nvl(BD.structureflag, '0') <> '1'
+           and not exists
+         (select 1
+                  from ECR3.DISASTER_INFO di
+                 where di.customerid = BD.CustomerID)
+           and (BD.RelativeSerialNo2 not in (select serialno from ecr_bank) or
+               (BD.RelativeSerialNo2 in (select serialno from ecr_bank) and
+               substr(sysdate, 1, 2) not in
+               ('19', '20', '21', '22', '23', '24', '25')))
+        union all
+        select BD.CustomerID as CustomerID,
+               (select PBCODE
+                  from ecr3.ECR_CODEMAP
+                 where ColName = '6501'
+                   and CTCODE = bd.statorgid) as FinanceID,
+               nvl(BD.BusinessCurrency, '01') as Currency,
+               (case
+                 when exists (select  1
+                         from ecr_tmp_bd d
+                        where d.customerid = bd.customerid
+                          and d.structureflag = '1'
+                        group by d.customerid
+                       having sum(case
+                         when d.interestbalance2 < 0 then
+                          0.00
+                         else
+                          nvl(d.interestbalance2, 0.00)
+                       end) = 0) then
+                  0.00
+                 else
+                  round((case
+                          when length(BD.FinishDate) > 0 then
+                           0.00
+                          when nvl(BD.InterestBalance2, 0) < 0 then
+                           0.00
+                          else
+                           nvl(BD.InterestBalance2, 0)
+                        end),
+                        2)
+               end) as CecmBalance,
+               '2' as InterestType
+          from ECR_TMP_BD BD, ECR3.ECR_CUSTOMERINFO EC
+         where BD.CustomerID = EC.CustomerID
+           and nvl(BD.structureflag, '0') <> '1'
+           and not exists
+         (select 1
+                  from ECR3.DISASTER_INFO di
+                 where di.customerid = BD.CustomerID)
+           and (BD.RelativeSerialNo2 not in (select serialno from ecr_bank) or
+               (BD.RelativeSerialNo2 in (select serialno from ecr_bank) and
+               substr(sysdate, 1, 2) not in
+               ('19', '20', '21', '22', '23', '24', '25'))))
+ group by CustomerID, FinanceID, Currency, InterestType;
+
+
+生产上速度很快，测试很慢
+1.收集表的统计信息
+2.与生产对比，发现表ECR_TMP_BD缺少索引，建之
+3.与生产sql对比，发现生产有/*+RULE */
+

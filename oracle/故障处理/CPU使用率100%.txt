@@ -1,0 +1,184 @@
+2014.3.24 
+环境：hp-ux,11.2.0.3
+系统：股权托管
+问题：通过glance查看io使用率达到100%
+解决办法：通过查看【estock_0625_直接路径读_io高.html】，发现direct path read很高，通过设置10949事件，关闭直接路径读，
+         随后加压测试发现io使用率明显降低，但是cpu使用率增加到90%以上，通过查看【estock_0625_cpu高.html】，top10sql
+         中基本都是insert和update语句，未发现单次执行占用cpu很高的sql，使用glance按cpu排序oracle进程，然后查到这些进程
+         大多是执行一个查询语句，对该语句分析后发现使用的是全表扫描，且未绑定变量，后在查询列上建立了一个复合索引，加压
+         测试发现cpu明显降低，但是，随后测试发现io又达到100%，再次查看【estock_0625_单次提交_io高.html】发现，top5等待
+         事件中log file sync最多，top10sql中基本还是insert和update语句，查看user commits是1073912，该insert语句的执行
+         次数是1044303，怀疑程序中每insert一次就commit一次，经和程序员沟通确认，commit放在for循环里面了，随后将commit放
+         到for循环外进行批量提交，程序修改后io和cpu都降下来了。
+
+总结：top10sql中执行次数少的sql要格外关注，检查是否使用绑定变量
+
+
+
+################################## cpu高问题解决思路
+问题：cpu使用率超过90%以上。
+
+通过glance查询后台进程，然后查询这些进程正在执行的sql
+  select c.sql_id, to_char(substr(sql_fulltext, 1, 4000))
+  from v$process a, v$session b, v$sql c
+ where a.ADDR = b.PADDR
+   and b.SQL_ID = c.SQL_ID
+   and a.spid in ('22123', '22295', '22081', '22291', '22153',
+                  '22289', '22167', '22136', '22165', '22286',
+                  '22122', '22293', '22169', '22089', '22156',
+                  '22288', '22161', '22158', '22152', '22100',
+                  '22118', '22139', '22147', '22142', '22303',
+                  '22130', '22162', '22301', '22115', '22132',
+                  '22121', '22149', '22145', '22140', '22154',
+                  '22298', '22166', '22097', '22126', '22299');
+
+  经查询，sql如下：
+  select unique(client_no)
+    from estock.tbshareinfo
+   where enterp_client_no = '10000430'
+     and tbshareinfo.stock_no in ('100004300001')
+     and tbshareinfo.branch_code = '0000000000';
+
+-- 查询表的大小
+ SQL> select a.owner,
+  2         a.table_name,
+  3         a.last_analyzed,
+  4         a.num_rows,
+  5         a.partitioned,
+  6         b.bytes / 1024 / 1024 size_mb
+  7    from dba_tables a, dba_segments b
+  8   where a.table_name in ('TBSHAREINFO')
+  9     and a.table_name = b.segment_name;
+
+OWNER                          TABLE_NAME                     LAST_ANALYZE   NUM_ROWS PAR    SIZE_MB
+------------------------------ ------------------------------ ------------ ---------- --- ----------
+ESTOCK                         TBSHAREINFO                    13-MAR-15       1015126 NO          80
+
+
+-- 查询索引的大小
+SQL> select a.owner, a.table_name, b.index_name, c.BYTES / 1024 / 1024 size_mb
+  2    from dba_tables a, dba_indexes b, dba_segments c
+  3   where a.table_name in ('TBSHAREINFO')
+  4     and a.table_name = b.table_name
+  5     and a.owner = b.table_owner
+  6     and b.index_name = c.segment_name;
+
+OWNER                          TABLE_NAME                     INDEX_NAME                        SIZE_MB
+------------------------------ ------------------------------ ------------------------------ ----------
+ESTOCK                         TBSHAREINFO                    PK_TBSHAREINFO                         44 
+
+
+-- 查询索引的列
+SQL> select TABLE_OWNER,TABLE_NAME,COLUMN_NAME,COLUMN_POSITION from dba_ind_columns where table_name='TBSHAREINFO';
+
+TABLE_OWNER                    TABLE_NAME                     COLUMN_NAME                    COLUMN_POSITION
+------------------------------ ------------------------------ ------------------------------ ---------------
+ESTOCK                         TBSHAREINFO                    CLIENT_NO                                    1
+ESTOCK                         TBSHAREINFO                    STOCK_NO                                     2
+
+
+-- 查询表的列
+SQL> select owner,table_name,COLUMN_NAME,NUM_DISTINCT from dba_tab_columns where table_name='TBSHAREINFO';
+
+OWNER                          TABLE_NAME                     COLUMN_NAME                    NUM_DISTINCT
+------------------------------ ------------------------------ ------------------------------ ------------
+ESTOCK                         TBSHAREINFO                    CLIENT_NO                              2231
+ESTOCK                         TBSHAREINFO                    STOCK_NO                              20752
+ESTOCK                         TBSHAREINFO                    ENTERP_CLIENT_NO                      20394
+ESTOCK                         TBSHAREINFO                    TOT_VOL                                 148
+ESTOCK                         TBSHAREINFO                    TRANS_FROZEN_VOL                          1
+ESTOCK                         TBSHAREINFO                    JUDGM_FROZEN_VOL                          1
+ESTOCK                         TBSHAREINFO                    PLEDG_FROZEN_VOL                         21
+ESTOCK                         TBSHAREINFO                    RESERVE1                                  0
+ESTOCK                         TBSHAREINFO                    RESERVE2                                  0
+ESTOCK                         TBSHAREINFO                    RESERVE3                                  0
+ESTOCK                         TBSHAREINFO                    RESERVE4                                  0
+ESTOCK                         TBSHAREINFO                    BRANCH_CODE                              28
+ESTOCK                         TBSHAREINFO                    HOLD_TYPE                                 1
+
+
+-- 查询sql的执行计划
+SQL> explain plan for 
+  2    select unique(client_no)
+  3      from estock.tbshareinfo
+  4     where enterp_client_no = '10000430'
+  5       and tbshareinfo.stock_no in ('100004300001')
+  6       and tbshareinfo.branch_code = '0000000000';
+
+Explained.
+
+SQL> select * from table(dbms_xplan.display);
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------------------------------------
+Plan hash value: 1181767719
+
+---------------------------------------------------------------------------------
+| Id  | Operation         | Name        | Rows  | Bytes | Cost (%CPU)| Time     |
+---------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT  |             |     1 |    48 |  2257   (3)| 00:00:28 |
+|*  1 |  TABLE ACCESS FULL| TBSHAREINFO |     1 |    48 |  2257   (3)| 00:00:28 |
+---------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("TBSHAREINFO"."STOCK_NO"='100004300001' AND
+              "ENTERP_CLIENT_NO"='10000430' AND "TBSHAREINFO"."BRANCH_CODE"='0000000000
+              ')
+
+15 rows selected.
+
+SQL> 
+
+
+经查询发现，该语句的执行计划是全表扫面，查询条件中STOCK_NO已存在于主键索引中，计划在【enterp_client_no、branch_code】
+两列上建立复合索引 
+
+-- 建复合索引
+SQL> explain plan for
+  2    select unique(client_no)
+  3      from estock.tbshareinfo
+  4     where enterp_client_no = '10000430'
+  5       and stock_no in ('100004300001')
+  6       and branch_code = '0000000000';
+
+Explained.
+
+SQL> select * from table(dbms_xplan.display);
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------------------------------------
+Plan hash value: 1535929272
+
+------------------------------------------------------------------------------------------------
+| Id  | Operation                   | Name             | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT            |                  |     1 |    48 |    49   (0)| 00:00:01 |
+|*  1 |  TABLE ACCESS BY INDEX ROWID| TBSHAREINFO      |     1 |    48 |    49   (0)| 00:00:01 |
+|*  2 |   INDEX RANGE SCAN          | TBSHAREINFO_IND2 |    49 |       |     3   (0)| 00:00:01 |
+------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   1 - filter("STOCK_NO"='100004300001')
+   2 - access("ENTERP_CLIENT_NO"='10000430' AND "BRANCH_CODE"='0000000000')
+
+15 rows selected.
+
+SQL> 
+
+建索引后，sql的执行计划改为索引扫描了，重新加压测试发现cpu使用率明显降低了。
+
+
+结论：该sql因为未使用绑定变量，导致在awr中体现并不明显，因此建议OLTP系统中尽量使用绑定变量。
+
+
+
+
+
+
+生成执行计划：
+@?/rdbms/admin/utlxpls
+

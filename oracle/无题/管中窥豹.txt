@@ -1,0 +1,44 @@
+前记：
+曾经做过那么多次各种测试，也解决过若干问题，可惜多数没有记录，为戒。 2020-12-06
+
+
+2015-08-07
+加密机性能测试支持
+OWNER      TABLE_NAME                     INDEX_NAME                        SIZE_MB
+---------- ------------------------------ ------------------------------ ----------
+ICARDKMS   RSAKEYPOOL                     I_RSAKEYPOOL_INDEX                    120
+ICARDKMS   RSAKEYPOOL                     SYS_C00116958                         152
+
+SQL> alter index ICARDKMS.I_RSAKEYPOOL_INDEX rebuild;
+SQL> alter index ICARDKMS.SYS_C00116958 rebuild;
+
+
+OWNER      TABLE_NAME                     INDEX_NAME                        SIZE_MB
+---------- ------------------------------ ------------------------------ ----------
+ICARDKMS   RSAKEYPOOL                     I_RSAKEYPOOL_INDEX                     64
+ICARDKMS   RSAKEYPOOL                     SYS_C00116958                          88
+
+AWR中发现：
+update seq$ 
+   set increment$=:2, minvalue=:3, maxvalue=:4, cycle#=:5, order$=:6, 
+       cache=:7, highwater=:8, audit$=:9, flags=:10 where obj#=:1;
+扩cache：
+
+alter sequence ICARDKMS.KMS_ICCARD_ID cache 500;
+
+注意：sequence使用cache，重启后可能会产生断号问题。
+
+##############	邮件  ##############	
+关于每天23:00 Cfg_Time_Pct_AVG参数超标，这个指标和以下两个原因有关：
+1.测试环境内存只有4G，数据库内存参数不能按最低标准进行配置。
+2.测试环境用的是文件系统，没有使用裸设备，io性能不高，影响数据库写redo日志。
+数据库的job已全部禁用，数据库方面会继续检查有没有别的原因。
+同时建议程序中尽量使用批量commit的方式。
+ 
+今天调整的内容：
+1.修改ICARDKMS.KMS_ICCARD_ID的cache
+2.alter index ICARDKMS.I_RSAKEYPOOL_INDEX rebuild;
+  alter index ICARDKMS.SYS_C00116958 rebuild;
+  两个索引大小分别从120M、152M降到64M和88M。
+3.关闭数据库回收站
+##############	邮件  ##############

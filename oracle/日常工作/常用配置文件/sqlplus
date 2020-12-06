@@ -1,0 +1,21 @@
+vi $ORACLE_HOME/sqlplus/bin/login.sql
+----------------------------------------------------------
+set termout off
+define loginname=idle
+column global_name new_value loginname
+
+select  USER||'@'||substr(global_name,1,decode(dot,0,length(global_name),dot-1))  global_name
+from (select global_name,  instr(global_name,'.') dot from global_name);
+
+set sqlprompt '&loginname> '
+set termout on
+define_editor=vi
+set linesize 120
+set pagesize 999
+
+
+
+
+
+echo "export SQLPATH=\$ORACLE_HOME/sqlplus/bin/" >> ~/.bash_profile
+

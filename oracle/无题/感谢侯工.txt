@@ -1,0 +1,48 @@
+2015.4.28 周二
+今天有一个变更，创建数据库dbview用户，如果能根据反馈表中的信息做成配置文件，自动生成脚本需要的配置文件，则可大大减少大家的工作时间。
+究其原因，不是能力不足以达到，而是心里没有充分考虑脚本使用者，没有这种意识。
+关键看变更步骤的第三步！
+
+
+###############  变更步骤  ###############
+1、从10.1.106.20的/home/database/dbview目录中下载 getfile.sh
+$> cd /tmp
+$> ftp 10.1.106.20
+ftp> cd dbview
+ftp> get getfile.sh
+ftp> bye
+
+2、运行getfile.sh
+sh /tmp/getfile.sh
+
+
+####### 此步骤可以根据反馈表的内容自动生成！！！！！！！！！！！！！！！！！！！！！！
+3、修改配置文件dbview_profile，具体修改方法见《dbview_profile配置说明.txt》
+vi /tmp/user_create/dbview_profile
+
+
+4、使用oracle用户运行创建用户的脚本，脚本结束后请到/tmp/user_create/create_dbview_logs检查日志是否有报错信息
+cd /tmp/user_create/
+sh create_dbview.sh
+
+ 
+5、删除上传的脚本
+rm -r /tmp/user_create 
+rm /tmp/getfile.sh
+
+
+6、验证
+1.应用管理员在变更后第二天使用appview用户验证
+2.DBA变更后使用oracle用户执行/home/sysadmin/dbtools/applogin.sh检查能否通过dbview用户登录数据库
+
+
+注：如果是备机，只需要按顺序执行1、2、5步即可。
+    第一批执行过的系统，请按顺序执行1、2、5步更新脚本。
+ 
+
+###############  回退步骤  ###############
+1.从dbview_profile中查看新建的数据库用户
+2.使用drop user xxxxx cascade;命令将用户删除
+
+
+

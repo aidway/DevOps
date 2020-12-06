@@ -1,0 +1,11 @@
+2015.05.19
+export NLS_LANG=AMERICAN_CHINA.UTF8 
+
+这个搭配真是够奇葩~~~
+
+ 
+-- 字符集
+NLS_CHARACTERSET               ZHS16GBK                       Character set
+
+
+

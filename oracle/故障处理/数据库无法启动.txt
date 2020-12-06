@@ -1,0 +1,39 @@
+2015.4.29 周三
+故障：上午数据库能正常使用，下午发现数据库停了，且数据库无法启动，alert日志未发现报错信息。
+Oracle：11.2.0.3
+OS：HP-UX
+
+尝试启动数据库，发现找不到参数文件
+SQL> startup
+ORA-01078: failure in processing system parameters
+ORA-01565: error in identifying file '/dev/oracle/spfile'
+ORA-27041: unable to open file
+HPUX-ia64 Error: 6: No such device or address
+Additional information: 9
+
+
+在操作系统层面检查是否有参数文件'/dev/oracle/spfile'
+oracle@B89036V7:/oracle$ll /dev/oracle/spfile
+lrwxr-xr-x   1 root       sys             26 Jul  7  2014 /dev/oracle/spfile -> /dev/vgcash/rlv_ora_spfile
+oracle@B89036V7:/oracle$ll  /dev/vgcash/rlv_ora_spfile
+crw-rw----   1 oracle     oinstall   128 0x00000e Jul  3  2014 /dev/vgcash/rlv_ora_spfile
+oracle@B89036V7:/oracle$
+
+
+在操作系统层面能看到该参数文件，继续检查下裸设备的状态，经检查发现裸设备的状态为“未激活”
+root@B89036V7:/dev/vgcash#vgdisplay /dev/vgcash
+vgdisplay: Volume group not activated.
+vgdisplay: Cannot display volume group "/dev/vgcash".
+
+
+怀疑重启过操作系统，检查操作系统的启动时间，发现刚刚启动了1.5小时，却是重启过OS！
+root@B89036V7:/dev/vgcash#uptime
+  4:00pm  up  1:35,  5 users,  load average: 0.00, 0.00, 0.00
+
+
+激活裸设备，激活后数据库可以正常启动了~
+root@B89036V7:/dev/vgcash#vgchange -a y /dev/vgcash
+Activated volume group.
+Volume group "/dev/vgcash" has been successfully changed.
+
+

@@ -1,0 +1,34 @@
+2016-02-18
+
+frsdb测试库故障处理：因异常关机，导致启动时报错，如下：
+Errors in file /oracle/app/oracle/diag/rdbms/frsdb/frsdb/trace/frsdb_dbw0_11909.trc:
+ORA-01157: cannot identify/lock data file 4 - see DBWR trace file
+ORA-01110: data file 4: '/dev/frsdb/frs_dat01'
+ORA-27048: skgfifi: file header information is invalid
+
+使用dbv校验数据文件：
+$> dbv file=/dev/frsdb/frs_dat01
+DBVERIFY: Release 11.2.0.3.0 - Production on Thu Feb 18 13:41:18 2016
+Copyright (c) 1982, 2011, Oracle and/or its affiliates.  All rights reserved.
+DBV-00107: Unknown header format (0) (0)
+
+
+将文件/dev/frsdb/frs_dat01的前2M复制出来：
+$> dd if=/dev/frsdb/frs_dat01 of=file_header bs=8192 count=256
+查看文件头，发现全是空的：
+$> od -x file_header
+0000000 0000 0000 0000 0000 0000 0000 0000 0000
+*
+10000000
+
+
+解决方法：
+-- 将数据文件的状态更改为recover
+alter database datafile '/dev/frsdb/frs_dat01' offline drop;
+重建表空间
+
+注：
+alter tablespace + offline : 操作对象是表空间，在noarchivelog/archivelog模式下都可以，因为表空间此时会做检查点，从而不会丢失数据。
+alter database + offline : 操作对象是数据文件，只有在archivelog模式下允许，因为不会触发检查点，所以需要依赖归档保证数据不丢失。如果在noarchivelog模式下，需要执行offline drop，无法恢复。
+
+

@@ -1,0 +1,47 @@
+一、启动数据库的时候，报out of memory
+
+解决：
+getconf PAGESIZE
+ipcs -m
+
+
+修改/etc/sysctl.conf
+-----------------------------------------
+kernel.shmall = physical RAM size / pagesize .For most systems, this will be the value 2097152.
+kernel.shmmax = physical RAM.
+kernel.shmmni = 4096
+
+
+二、
+oracle@IBL054P1:/oracle/createinst/log$cat createdb.log
+ORACLE instance started.
+
+
+Total System Global Area 4275781632 bytes
+Fixed Size                  2189440 bytes
+Variable Size             822085504 bytes
+Database Buffers         3439329280 bytes
+Redo Buffers               12177408 bytes
+CREATE DATABASE pcs
+*
+ERROR at line 1:
+ORA-01501: CREATE DATABASE failed
+ORA-00200: control file could not be created
+ORA-00202: control file: '/dev/oracle/control01'
+ORA-27038: created file already exists
+Additional information: 1
+
+oracle@IBL054P1:/oracle/createinst/log$oerr ora 200
+00200, 00000, "control file could not be created"
+// *Cause:  It was not possible to create the control file.
+// *Action: Check that there is sufficient disk space and no conflicts in
+//          filenames and try to create the control file again.
+
+原因：裸设备建的是B设备，改成C设备，联接使用的都是rora设备，不是ora设备。
+
+
+
+三、安装的时候乱码：
+export LANG=en_US.UTF-8
+国家字符集用以存储nchar、nvarchar2、nclob等类型数据，作为数据库字符集的补充，可以用来存储不同国家的特殊字符、特殊编码等。
+主要作用是增强了oracle的字符处理能力。

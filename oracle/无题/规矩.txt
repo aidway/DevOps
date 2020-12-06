@@ -1,0 +1,9 @@
+2015.5.13
+今晚收单性能测试环境打补丁，由于未停止数据库和监听，一直报错，报错如下：
+Verifying the update...
+Applying sub-patch '13923374' to OH '/oracle/app/oracle/product/11.2.0.3/db_1'
+ApplySession: Optional component(s) [ oracle.network.cman, 11.2.0.3.0 ]  not present in the Oracle Home or a higher version is found.
+
+
+
+总结：打补丁要看readme.txt，要把数据库和监听都停了。

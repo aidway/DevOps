@@ -1,0 +1,45 @@
+Oracle Clusterware命令集
+节点层：olsnodes
+网络层：oifcfg
+集群层：crsctl ocrcheck ocrdump ocfconfig
+应用层：srvctl onsctl crs_stat
+
+
+
+su - grid
+cd $ORACLE_HOME/bin
+节点层：
+grid@IBL055P1:/oracle/app/11.2.0/grid/bin$./olsnodes -h
+Usage: olsnodes [ [-n] [-i] [-s] [-t] [<node> | -l [-p]] | [-c] ] [-g] [-v]
+        where
+                -n print node number with the node name
+                -p print private interconnect address for the local node
+                -i print virtual IP address with the node name
+                <node> print information for the specified node
+                -l print information for the local node 
+                -s print node status - active or inactive 
+                -t print node type - pinned or unpinned 
+                -g turn on logging 
+                -v Run in debug mode; use at direction of Oracle Support only.
+                -c print clusterware name
+1.显示每个节点的ID
+./olsnodes -n
+
+
+
+
+集群层：
+crsctl -h
+
+
+
+应用层：
+crs_stat: 查看CRS维护的所有资源的运行状态
+查看资源的权限定义: crs_stat -ls
+
+
+
+Server Control Utility
+srvctl -help
+
+

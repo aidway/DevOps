@@ -1,0 +1,23 @@
+-- 停数据库和监听
+env | grep ORACLE
+shutdown immediate;
+lsnrctl stop;
+
+-- 使用oracle用户执行
+which relink
+cd $ORACLE_HOME/bin
+./relink all
+查看relink日志
+/oracle/app/oracle/product/11.2.0/install/relink.log
+
+
+
+relink后切换测试
+
+
+
+1.操作系统如果打了补丁，oracle要重新relink一次
+type relink
+cd $ORACLE_HOME/bin
+./relink all
+cat $ORACLE_HOME/install/relink.log | more

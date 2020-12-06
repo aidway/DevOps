@@ -1,0 +1,32 @@
+Oracle Clusterware把整个集群的配置信息放在共享存储OCR Disk上。在整个集群中，只能有一个节点对OCR Disk进行读写操作，该节点叫做Master Node，所有节点都会保存在内存中保留一份OCR的拷贝，同时有一个OCR process从该内存中读取内容。OCR内容发生改变时，由Master Node的OCR Process负责同步到其它节点的OCR Process。Oracle会定时备份OCR，路径是$ORACLE_HOME/cdata
+
+
+
+-- 检查OCR备份
+ocrconfig -showbackup
+
+
+-- 检查OCR的状态
+ocrcheck
+
+
+
+
+OCR Disk用来解决集群健忘问题
+
+健忘问题主要是由于修改集群配置信息后，节点间的集群配置信息不一致导致的。
+Oracle的解决办法是：只有一份共享的集群配置文件。
+
+
+Oracle clusterware在运行过程中，必须确保其内容的完整性，因此不是每个节点都可以操作OCR Disk，每个节点上都有一份其内容的拷贝，存在
+于OCR cache的内存中。
+
+如果需要修改其内容，节点上的OCR process会通知OCR master Node，该节点上的OCR process负责更新本地和其它节点上的OCR cache内容。
+
+其它的进程，如ocssd，都不能直接访问OCR cache内容，如果需要访问，会向OCR process进程发送请求。
+
+OCR disk每四小时自动备份一次
+
+
+
+检查命令： ocrcheck

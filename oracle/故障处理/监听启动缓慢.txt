@@ -1,0 +1,69 @@
+问题：otp酒仙桥准生产数据库，启动listener_otp很慢。
+答曰：
+1.检查listener.ora配置文件
+SID_LIST_LISTENER_otp =
+  (SID_LIST =
+    (SID_DESC =
+      (SID_NAME = PLSExtProc)
+      (ORACLE_HOME = /oracle/app/oracle/product/11.2.0/db_1)
+      (PROGRAM = extproc)
+    )
+    (SID_DESC =
+      (GLOBAL_DBNAME = otp)
+      (ORACLE_HOME = /oracle/app/oracle/product/11.2.0/db_1)
+      (SID_NAME = otp)
+    )
+  )
+
+
+LISTENER_otp =
+  (DESCRIPTION_LIST =
+    (DESCRIPTION =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = 10.1.8.170 )(PORT = 1521))
+    )
+  )
+INBOUND_CONNECT_TIMEOUT_LISTENER_otp=0
+
+2.检查监听状态
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=10.1.8.170)(PORT=1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     listener_otp
+Version                   TNSLSNR for IBM/AIX RISC System/6000: Version 11.2.0.4.0 - Production
+Start Date                25-MAY-2016 15:03:27
+Uptime                    0 days 0 hr. 1 min. 14 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   /oracle/app/oracle/product/11.2.0/db_1/network/admin/listener.ora
+Listener Log File         /oracle/app/oracle/diag/tnslsnr/P740114P1/listener_otp/alert/log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=10.1.8.170)(PORT=1521)))
+Services Summary...
+Service "PLSExtProc" has 1 instance(s).
+  Instance "PLSExtProc", status UNKNOWN, has 1 handler(s) for this service...
+Service "otp" has 1 instance(s).
+  Instance "otp", status UNKNOWN, has 1 handler(s) for this service...
+
+3.查看监听日志
+<msg time='2016-05-25T15:07:27.240+08:00' org_id='oracle' comp_id='tnslsnr'
+ type='UNKNOWN' level='16' host_id='P740114P1'
+ host_addr='10.1.240.157'>
+ <txt>25-MAY-2016 15:07:22 * (CONNECT_DATA=(CID=(PROGRAM=)(HOST=P740114P1)(USER=oracle))(COMMAND=stop)(ARGUMENTS=64)(SERVICE=listener_otp)(VERSION=186647552)) * stop * 0
+ </txt>
+</msg>
+
+
+4.检查P740114P1所对应的ip
+cat /etc/hosts | grep P740114P1
+--------------------------------
+10.1.240.157   P740114P1
+10.1.8.93       P740114P1
+
+
+至此，发现问题，一个主机名竟然对应两个ip！
+
+解决：将第一行删掉，监听可速起！
+另外，修改listener.ora，加上LOGGING_listener_otp = OFF
+
+

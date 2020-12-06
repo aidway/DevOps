@@ -1,0 +1,19 @@
+-- 创建chained_rows相关表
+sqlplus / as sysdba
+@?/rdbms/admin/utlchain.sql
+
+
+-- 将产生行迁移的记录插入到chained_rows表中
+analyze table emp list chained rows into chained_rows;
+
+
+-- 查询
+select count(*) from chained_rows where table_name = 'EMP';
+
+
+
+解决办法：
+重建表
+调整pctfree
+
+

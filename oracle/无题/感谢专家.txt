@@ -1,0 +1,41 @@
+2015.5.12
+监控早七点到晚六点期间执行时间超过1小时的sql，在11g我是用v$session中sql_exec_start字段进行判断sql的开始时间，但在10g中v$session中无
+此字段。王工听后一句话，为什么不用sysdate进行判断？
+
+原sql：
+select 'sid:' || s.sid || '; sql_id:' || s.sql_id || '; sql_text:' ||
+       substr(to_char(t.sql_text), 1, 150) || '; event:' || s.event info,
+       s.LAST_CALL_ET seconds
+  from v$session s, dba_hist_sqltext t
+ where s.type = 'USER'
+   and s.sql_id is not null
+   and s.sql_id = t.sql_id
+   and s.status = 'ACTIVE'
+   and to_char(s.sql_exec_start, 'hh24') between '07' and '18';
+
+
+后经王工建议，修改如下：
+1.Info中应该增加 v$session.username,machine, program,state 信息。
+2.Sql text 可以从v$sqlstats查询, 不应该从dba_hist…中取得
+3.v$sqlstats 使用外连接；(如果该sql有两个不同的执行计划，会在该视图中出现两条记录)
+
+
+
+修改后的sql：
+select distinct 'sid:' || s.sid || '; sql_id:' || s.sql_id || '; sql_text:' ||
+                substr(to_char(t.sql_text), 1, 120) || '; event:' ||
+                s.event || '; username:' || s.username || '; machine:' ||
+                s.machine || '; program:' || s.program || '; state:' ||
+                state info,
+                s.LAST_CALL_ET seconds
+  from v$session s, v$sqlstats t
+ where s.type = 'USER'
+   and s.sql_id is not null
+   and s.sql_id = t.sql_id(+)
+   and s.status = 'ACTIVE'
+   and to_char(sysdate, 'hh24') between '07' and '18';
+
+
+
+总结：解决问题要善于分析，抓主要矛盾，我的目的是只监控早7点到晚6点期间执行的sql，一个办法是通过sql开始执行的时间进行判断，另一个办法是判断当前时间，如果当前时间不在早7点到晚6点，那么我可以不做任何监控，目的是一样的。
+

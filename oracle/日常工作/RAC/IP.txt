@@ -1,0 +1,22 @@
+1、PUBLIC和VIP
+Oracle RAC中每个节点都有一个虚拟IP，简称VIP， 与公网PUBLIC  IP在同一个网段。vip 附属在public网口接口。
+ 
+VIP和PUBLIC IP最主要的不同之处在于：VIP是浮动的，而PUBLIC IP是固定的。在所有节点都正常运行时，每个节点的VIP会被分配到public NIC上；在linux下ifconfig查看，public网卡上是2个IP地址；如果一个节点宕机，这个节点的VIP会被转移到还在运行的节点上。也就是幸存的节点的public NIC这个网卡上，会有3个IP地址。
+VIP 的作用：
+VIP并不能把用户请求转到实例上；但是可以让用户可以连通IP，不能连到监听，这样可以快速收到连接报错信息。快速切换到正常的节点。
+#############################################
+2再看RAC中的 Private
+ 
+RAC中的 Private私有IP用于心跳同步，这个对于用户层面，可以直接忽略。简单理解，这个Ip用来保证两台服务器同步数据用的，属于RAC内部之间通信。priv 与public 不应同属一个接口。
+ 
+另外一个大家疑问的问题：做RAC时，用于两个node间互连的网卡是否可以用交叉线连接？
+Metalink上的RAC文档是推荐使用交换机作为内部网卡的连接,而不使用交叉线,原因是避免因为对连节点关闭或重启而导致网卡检查到链接故障状态而删除绑定的协议。导致高速缓存合并网络将会变为不可用。
+从图上看，两个节点间的内部通信通过交换机S2来进行交互。
+#############################################################
+3.RAC中的SCAN  IP
+ 
+在11gR2中，SCAN  IP是作为一个新增IP出现的, scan ip其实是oracle在客户端与数据库之间，新加的一个连接层，当有客户端访问时，连接到 SCAN IP LISTENER， 而SCAN IP LISTENER接收到连接请求时，会根据 LBA 算法将该客户端的连接请求，转发给对应的instance上的VIP LISTENER，从而完成了整个客户端与服务器的连接过程。简化如下：
+ 
+client -> scan listener -> local listener -> local instance
+ 
+也可以把scan理解为一个虚拟主机名，它对应的是整个RAC集群。客户端主机只需通过这个scan name即可访问数据库集群的任意节点。当然访问的节点是随机的，oracle强烈建议通过DNS Server的round robin模式配置解析SCAN，实现负载均衡（即轮换连接SCAN对应的IP地址）。这有点类似通过vip和listener loadbalance配置实现负载均衡的原理

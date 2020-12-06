@@ -1,0 +1,28 @@
+中文字符集：
+
+oracle@ESSC-KMS-DA:~> env | grep LANG
+NLS_LANG=AMERICAN_AMERICA.ZHS16GBK		==> 客户端字符集
+LANG=en_US					==> OS字符集
+
+数据库字符集：
+SQL> select userenv('language') from dual;
+USERENV('LANGUAGE')
+----------------------------------------------------
+AMERICAN_AMERICA.ZHS16GBK			==> 数据库内部字符集
+
+
+
+col PARAMETER for a30
+col VALUE for a30
+select * from nls_database_parameters;
+
+
+en_US.UTF-8：你说英语，你在美国，字符集是utf-8
+zh_CN.UTF-8：你说中文，你在中国，字符集是utf-8
+
+
+
+此搭配中文乱码：
+NLS_LANG=AMERICAN_AMERICA.ZHS16GBK
+LANG=c
+AMERICAN_AMERICA.ZHS16GBK

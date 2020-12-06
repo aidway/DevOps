@@ -1,0 +1,9 @@
+-- 新建表空间
+create tablespace app2  datafile '+DATA01' size 10M;
+
+-- 添加数据文件
+alter tablespace app2  add datafile '+DATADG' size 10M;
+alter database datafile '+DATA01/test/datafile/app2.271.911127109' resize 40M;
+
+-- 添加临时文件
+alter tablespace temp add tempfile '+DATADG' size 10M;

@@ -1,0 +1,71 @@
+#
+#模板适用表空间扩容
+#
+############################
+#
+#变更原因
+#数据库出现BUG****，经过原厂技术支持推荐和开发环境测试
+#需要安装patch***
+#
+###########################
+#
+#变更目标
+#安装patch***，解决数据库bug***
+#
+############################
+
+
+########################################################
+#
+#操作系统操作步骤
+#如果补丁需要更新数据字典，建议断开存储进行保护
+#
+########################################################
+
+
+#############################
+#数据库操作
+#############################
+
+1、停止数据库和监听
+$>sqlplus /nolog
+SQL>conn / as sysdba
+SQL>shutdown immediate;
+SQL>quit
+$>lsnrctl stop ***
+
+2、补丁安装
+$>unzip path***.zip
+$>cd ***
+$>opatch apply
+$>opatch lsinventory
+#如果需要更新数据字典，
+#需要启动数据库到排他模式，运行SQL文件并检查日志
+
+3、启动数据库
+$>sqlplus /nolog
+SQL>conn / as sysdba
+SQL>startup;
+SQL>quit
+$>lsnrctl start ***
+#数据库和监听日志检查
+$>view alert_<Oracle_sid>.log
+$>view listener_***.log
+
+
+##############################
+#
+#回退步骤
+#
+##############################
+1、停止数据库和监听
+$>sqlplus /nolog
+SQL>conn / as sysdba
+SQL>shutdown immediate;
+SQL>quit
+$>lsnrctl stop ***
+
+2、补丁卸载
+$>opatch rollback -id 补丁号
+$>opatch lsinventory
+

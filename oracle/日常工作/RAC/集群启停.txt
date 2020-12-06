@@ -1,0 +1,16 @@
+使用root用户，仅停止该节点上的资源：
+crsctl stop has [-f]
+crsctl start has
+
+
+启停整个集群：
+crsctl start cluster -all
+crsctl stop cluster -all
+
+
+
+
+检查集群状态：
+crsctl check cluster
+crs_stat -t
+

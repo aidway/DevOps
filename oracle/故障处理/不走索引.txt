@@ -1,0 +1,159 @@
+2015.5.18
+简介：itump系统，全表统计信息缺失，导致某sql使用全表扫描，而不是分区索引。
+问题描述：表pbcebdb.t_pb_log是按trandate字段按日分区的分区表，只保留三天数据，每天有30000000+行的数据，
+         每天会先收集当天分区的统计信息，然后把该统计信息复制到下一天的分区。该表上有一个(trandate,trantime)的
+         复合索引，但问题sql不走索引，而是使用全表扫描。
+问题原因：全表统计信息为空，可从dba_tables中查询。                        
+问题sql：
+SQL> set autot trace exp
+SQL> select trancode, hostname, count(*) amount
+  2    from pbcebdb.t_pb_log
+  3   where trandate = to_char(SYSDATE, 'YYYYMMDD')
+  4     and trantime >= to_char(SYSDATE - 1 / (60 * 24), 'HH24MI')
+  5     and trantime < to_char(SYSDATE, 'HH24MI')
+  6   group by trancode, hostname;
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 2088681979
+
+----------------------------------------------------------------------------------------------------
+| Id  | Operation               | Name     | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT        |          |     1 |    31 | 89657   (2)| 00:17:56 |       |       |
+|   1 |  HASH GROUP BY          |          |     1 |    31 | 89657   (2)| 00:17:56 |       |       |
+|   2 |   PARTITION RANGE SINGLE|          |     1 |    31 | 89656   (2)| 00:17:56 |   KEY |   KEY |
+|*  3 |    TABLE ACCESS FULL    | T_PB_LOG |     1 |    31 | 89656   (2)| 00:17:56 |   KEY |   KEY |
+----------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - filter("TRANDATE"=TO_CHAR(SYSDATE@!,'YYYYMMDD') AND
+              "TRANTIME">=TO_CHAR(SYSDATE@!-.000694444444444444444444444444444444444444,'HH24MI') AND
+              "TRANTIME"<TO_CHAR(SYSDATE@!,'HH24MI'))
+
+
+-- 根据sql条件trandate = to_char(SYSDATE, 'YYYYMMDD')可知查询的是当天的数据，明确指定当天分区时，使用索引T_PB_LOG_IDX2
+SQL> select trancode, hostname, count(*) amount
+  2    from pbcebdb.t_pb_log partition (P_20150518)
+  3   where trandate = to_char(SYSDATE, 'YYYYMMDD')
+  4     and trantime >= to_char(SYSDATE - 1 / (60 * 24), 'HH24MI')
+  5     and trantime < to_char(SYSDATE, 'HH24MI')
+  6   group by trancode, hostname; 
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 1381360481
+
+---------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                           | Name          | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+---------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                    |               |     1 |    31 |     6  (17)| 00:00:01 |       |       |
+|   1 |  HASH GROUP BY                      |               |     1 |    31 |     6  (17)| 00:00:01 |       |       |
+|   2 |   PARTITION RANGE SINGLE            |               |     1 |    31 |     5   (0)| 00:00:01 |     3 |     3 |
+|   3 |    TABLE ACCESS BY LOCAL INDEX ROWID| T_PB_LOG      |     1 |    31 |     5   (0)| 00:00:01 |     3 |     3 |
+|*  4 |     INDEX RANGE SCAN                | T_PB_LOG_IDX2 |     1 |       |     4   (0)| 00:00:01 |     3 |     3 |
+---------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("TRANDATE"=TO_CHAR(SYSDATE@!,'YYYYMMDD') AND
+              "TRANTIME">=TO_CHAR(SYSDATE@!-.000694444444444444444444444444444444444444,'HH24MI') AND
+              "TRANTIME"<TO_CHAR(SYSDATE@!,'HH24MI'))
+
+-- 使用hint检查sql的执行计划，发现也是使用索引
+SQL> SELECT  /*+ index(t_pb_log T_PB_LOG_IDX2) */ TRANCODE, HOSTNAME, COUNT(*) AMOUNT
+  2    FROM PBCEBDB.T_PB_LOG
+  3   WHERE TRANDATE = TO_CHAR(SYSDATE, 'YYYYMMDD')
+  4     AND TRANTIME >= TO_CHAR(SYSDATE - 1 / (60 * 24), 'HH24MI')
+  5     AND TRANTIME < TO_CHAR(SYSDATE, 'HH24MI')
+  6   GROUP BY TRANCODE, HOSTNAME
+  7  ;
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 970066493
+
+---------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                           | Name          | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+---------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                    |               |   746 | 23126 |    61   (2)| 00:00:01 |       |       |
+|   1 |  HASH GROUP BY                      |               |   746 | 23126 |    61   (2)| 00:00:01 |       |       |
+|   2 |   PARTITION RANGE SINGLE            |               |   746 | 23126 |    60   (0)| 00:00:01 |   KEY |   KEY |
+|   3 |    TABLE ACCESS BY LOCAL INDEX ROWID| T_PB_LOG      |   746 | 23126 |    60   (0)| 00:00:01 |   KEY |   KEY |
+|*  4 |     INDEX RANGE SCAN                | T_PB_LOG_IDX2 |   265 |       |     8   (0)| 00:00:01 |   KEY |   KEY |
+---------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("TRANDATE"=TO_CHAR(SYSDATE@!,'YYYYMMDD') AND
+              "TRANTIME">=TO_CHAR(SYSDATE@!-.000694444444444444444444444444444444444444,'HH24MI') AND
+              "TRANTIME"<TO_CHAR(SYSDATE@!,'HH24MI'))
+
+
+-- 最后决定收集全表的统计信息
+1.查询失效索引
+select index_owner, index_name, partition_name, status
+  from dba_ind_partitions
+ where status ='UNUSABLE' 
+   and index_owner='PBCEBDB' 
+ order by partition_name;
+
+
+
+2.如果存在失效索引的话，rebuild
+select 'alter index ' || index_owner || '.' || index_name || ' rebuild partition  ' || partition_name || ';'
+  from dba_ind_partitions
+ where status ='UNUSABLE' 
+   and index_owner='PBCEBDB' 
+ order by partition_name;
+
+
+3.收集统计信息
+begin
+	dbms_stats.gather_table_stats(
+		ownname          => 'PBCEBDB',
+		tabname          => 'T_PB_LOG',
+		estimate_percent => 1,
+		cascade          => true
+	);
+end;
+/
+
+
+结果：收集完全表统计信息后，sql可以正常使用索引了。
+SQL> select trancode, hostname, count(*) amount
+  2    from pbcebdb.t_pb_log
+  3   where trandate = to_char(SYSDATE, 'YYYYMMDD')
+  4     and trantime >= to_char(SYSDATE - 1 / (60 * 24), 'HH24MI')
+  5     and trantime < to_char(SYSDATE, 'HH24MI')
+  6   group by trancode, hostname;
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 970066493
+
+---------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                           | Name          | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+---------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                    |               |   746 | 23126 |    61   (2)| 00:00:01 |       |       |
+|   1 |  HASH GROUP BY                      |               |   746 | 23126 |    61   (2)| 00:00:01 |       |       |
+|   2 |   PARTITION RANGE SINGLE            |               |   746 | 23126 |    60   (0)| 00:00:01 |   KEY |   KEY |
+|   3 |    TABLE ACCESS BY LOCAL INDEX ROWID| T_PB_LOG      |   746 | 23126 |    60   (0)| 00:00:01 |   KEY |   KEY |
+|*  4 |     INDEX RANGE SCAN                | T_PB_LOG_IDX2 |   265 |       |     8   (0)| 00:00:01 |   KEY |   KEY |
+---------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   4 - access("TRANDATE"=TO_CHAR(SYSDATE@!,'YYYYMMDD') AND
+              "TRANTIME">=TO_CHAR(SYSDATE@!-.000694444444444444444444444444444444444444,'HH24MI') AND
+              "TRANTIME"<TO_CHAR(SYSDATE@!,'HH24MI'))
+
+
+
+小技巧：在SecureCRT中，按住Alt键，然后用鼠标左键可以进行局部选择。
+

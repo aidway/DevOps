@@ -1,0 +1,8 @@
+意外修改了归档路径的位置，怎么办？
+vi init.ora
+--------------------------
+spfile=/dev/xxxxx
+log_archive_dest_1='location=/arch'
+
+启动数据库后，使用alter system 把spfile中参数修改为正确值。
+因为如果一个参数在参数文件中出现两次，后写的参数生效。

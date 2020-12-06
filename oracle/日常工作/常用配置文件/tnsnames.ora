@@ -1,0 +1,7 @@
+PLMS=
+(  DESCRIPTION= 
+     (ADDRESS=(PROTOCOL=tcp)(HOST=10.1.243.3)(PORT=1521))
+     (CONNECT_DATA= 
+        (SERVICE_NAME=PLMS)
+      )
+)

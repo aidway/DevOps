@@ -1,0 +1,29 @@
+应用程序：Pro*c
+操作系统：hp-ux IA64 11.31
+数据库：oracle 11.2.0.3
+现金管理应用程序重连数据库的机制是当程序收到数据库ora报错（ora-3114、ora-1012、ora-3135）时会自动重连数据库。
+应用在执行某sql时不会先去判断是否已经连接到数据库，而是在执行失败后收到ora报错时调用重连代码去连接数据库。
+数据库系统切换期间，数据库实例停止后，应用执行某SQL，收到的错误码ora-3135，此时应用重新连接数据库，返回错误码ora-12514。
+此时（应用未连接到数据库）应用会继续执行某SQL，但oracle这时无返回错误代码，负责连接数据库的应用子进程最终被中间件进程回收掉。
+TUXDEO日志如下：
+”server GROUP1/174: CMDTUX_CAT:1074: WARN: Client process 22032 - dropped message because server and client died, SERVICE=cmssrv_01“
+server GROUP1/174: CMDTUX_CAT:551: INFO: server removed
+现金管理定时程序的管理主程序的日志：
+”管理进程捕捉到<0003:招标易定时处理>接口模组进程(7734)被信号(9)中断退出“
+显示到前台的报错信息包含'KPEDBG_HDL_POP_FCPTR'关键字。
+修改参数以后，应用程序在同样情况下执行某sql时oracle会返回错误代码ora-3114，接收到该错误代码后应用会继续重连数据库，直到实例启动后可以正常连接。
+
+解决办法： 
+-- 客户端，oracle用户执行
+$> id
+$> cd $TNS_ADMIN
+$> vi sqlnet.ora
+----------- 添加以下内容
+# Disables the diagnostic framework features 
+DIAG_ADR_ENABLED = OFF 
+
+# Disables "first failure" dumping 
+DIAG_DDE_ENABLED = OFF 
+
+# Disables only the diagnostic signal handlers 
+DIAG_SIGHANDLER_ENABLED = OFF 

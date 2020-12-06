@@ -1,0 +1,16 @@
+2015.5.24
+事件：现金管理生产数据库升级
+
+出现的问题如下：
+1.升级后system表空间超过阀值，达到83%
+
+2.升级后spfile设置有误
+出错原因：create spfile from pfile='.....'; 这样做会将spfile生成在本地$ORACLE_HOME/dbs目录下。
+应该是create spfile='/dev/vgcashdb/rlvspfile'  from pfile='/tmp/upgrd/pfile_new.ora';
+
+3.执行升级脚本时，由于/arch目录权限问题，导致oracle无法归档，修改为oracle:install后正常执行。
+
+
+总结：
+1.升级前检查system、sysaux、undo、temp表空间使用率，及时扩容
+2.升级前检查/arch和/oracle目录的权限

@@ -1,0 +1,224 @@
+2015.6.18
+问题描述：现金管理主批量运行超时，正常时间约50min，出现性能问题时约140min。优化后，执行时间在20~30min内。
+
+
+分析思路：
+1.对比等待事件
+2.检查单次io吞吐率
+3.查看执行计划
+
+
+
+经查看，运行时间最长的top sql如下：
+SQL> explain plan for 
+  2  select count(acctno)
+  3    from cashtest.glsinacctlist a
+  4   where cancelflag = '0'
+  5     and trancode not in ('548300', 'T00000')
+  6     and acctno = '78200188000123278'
+  7     and trandate = '2015-06-01'
+  8     and (((trancode = 'TC0001' or trancode = 'TP0001') and
+  9         (flag = '1' or flag = '2')) or
+ 10         (trancode <> 'TC0001' and trancode <> 'TP0001' and
+ 11         flag not in ('B', 'C', 'D', 'E')))
+ 12     and not exists (select 1
+ 13            from cashtest.GLSINACCTLIST
+ 14           where acctno = a.acctno
+ 15             and trandate = a.trandate
+ 16             and cancelstan = a.serseqno
+ 17             and cancelflag = '1');  
+
+Explained.
+
+SQL> @?/rdbms/admin/utlxpls
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Plan hash value: 3506621322
+
+---------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name              | Rows  | Bytes | Cost (%CPU)| Time     |
+---------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |                   |     1 |   118 |     9   (0)| 00:00:01 |
+|   1 |  SORT AGGREGATE               |                   |     1 |   118 |            |          |
+|   2 |   NESTED LOOPS ANTI           |                   |     1 |   118 |     9   (0)| 00:00:01 |
+|*  3 |    TABLE ACCESS BY INDEX ROWID| GLSINACCTLIST     |     1 |    69 |     5   (0)| 00:00:01 |
+|*  4 |     INDEX RANGE SCAN          | GLSINACCTLIST_IDX |     1 |       |     4   (0)| 00:00:01 |
+|*  5 |    TABLE ACCESS BY INDEX ROWID| GLSINACCTLIST     |     1 |    49 |     4   (0)| 00:00:01 |
+|*  6 |     INDEX RANGE SCAN          | GLSINACCTLIST_IDX |     1 |       |     3   (0)| 00:00:01 |
+---------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - filter("CANCELFLAG"='0' AND "TRANCODE"<>'548300' AND "TRANCODE"<>'T00000' AND
+              ("TRANCODE"<>'TC0001' AND "TRANCODE"<>'TP0001' AND "FLAG"<>'B' AND "FLAG"<>'C' AND
+              "FLAG"<>'D' AND "FLAG"<>'E' OR ("FLAG"='1' OR "FLAG"='2') AND ("TRANCODE"='TC0001' OR
+              "TRANCODE"='TP0001')))
+   4 - access("ACCTNO"='78200188000123278' AND "TRANDATE"='2015-06-01')
+   5 - filter("CANCELFLAG"='1' AND "CANCELSTAN"="A"."SERSEQNO")
+   6 - access("ACCTNO"='78200188000123278' AND "TRANDATE"='2015-06-01')
+
+24 rows selected.
+
+SQL> 
+
+执行计划中用的是嵌套循环，查询账号78200188000123278对应的实际行数：
+SQL> select count(acctno)
+  2    from glsinacctlist a
+  3   where cancelflag = '0'
+  4     and trancode not in ('548300', 'T00000')
+  5     and acctno = '78200188000123278'
+  6     and trandate = '2015-06-01'
+  7     and (((trancode = 'TC0001' or trancode = 'TP0001') and
+  8         (flag = '1' or flag = '2')) or
+  9         (trancode <> 'TC0001' and trancode <> 'TP0001' and
+ 10         flag not in ('B', 'C', 'D', 'E')))
+ 11     and not exists (select 1
+ 12            from GLSINACCTLIST
+ 13           where acctno = a.acctno
+ 14             and trandate = a.trandate
+ 15             and cancelstan = a.serseqno
+ 16             and cancelflag = '1');  
+
+COUNT(ACCTNO)
+-------------
+        47531
+
+Elapsed: 01:46:11.09
+
+表glsinacctlist的数据量约4400万行，大小为40G，统计信息每天收集，但是生成的执行计划并不准确。
+可以看出，执行计划中的Rows为1是不准确的，如果使用嵌套循环，外层要循环47531次，每次要在4400万的表中查找，所以执行时间长，该执行计划明显不合理。
+统计信息收集的语句如下：
+begin
+    dbms_stats.gather_table_stats(
+	ownname          => 'CASH',
+	tabname          => 'GLSINACCTLIST',
+	estimate_percent => 20,
+	degree           => 2,
+	cascade          => true
+    );
+end;
+/
+
+
+后与项目组沟通，得知78200188000123278账号的数量是最多的，如下：
+SQL> select acctno,count(acctno) from GLSINACCTLIST group by acctno order by 2 asc;
+
+ACCTNO                           COUNT(ACCTNO)
+-------------------------------- -------------
+......................                ........
+39440188000087494                       105356
+36510188000182430                       122029
+1000207018901000002                     122029
+1001787018901000002                     123106
+77870188000067030                       123106
+36510188000142618                       138131
+1000275018901000002                     138131
+35250188000054092                       144904
+38680188000120824                       150369
+0824018901000001                        150369
+1014709018901000002                     169737
+083651120100303014006                   169737
+1003820018901000002                     173932
+1004441018901000004                     179659
+78200188000123360                       179659
+35430188000047529                       270783
+1027871018901000002                     270783
+1015101018901000002                     345894
+39730188000011846                       345923
+1015322018901000002                     422212
+36560188000087331                       422212
+38610188000264183                       541587
+1003899018901000002                     541587
+1021811018901000002                     546189
+38610188000403130                       546189
+1014123018901000002                     771845
+36560188000095880                       772650
+1005837018901000002                    3149345
+36560188000075124                      3149345
+1004441018901000002                    4427941
+78200188000123278                      4428340
+
+162571 rows selected.
+
+以上31条数据的行数加起来有23143079行，已经占了表行数的一半。
+
+-- 出现问题时应该查一下列的统计信息，当时未查
+select * from DBA_TAB_COL_STATISTICS where table_name='GLSINACCTLIST' and column_name='ACCTNO'
+
+
+怀疑是由于列数据分布倾斜导致的问题，对于某一列中的不同数值有不同的倾斜度（skew），要选择不同的执行计划，需要收集acctno列的直方图：
+begin
+    dbms_stats.gather_table_stats(
+	ownname          => 'CASHTEST',
+	tabname          => 'GLSINACCTLIST',
+	method_opt 	 => 'FOR COLUMNS acctno SIZE auto',
+	estimate_percent => 20,
+	degree           => 2,
+	cascade          => true
+    );
+end;
+/
+
+收集后重新执行sql：
+SQL> explain plan for
+  2  select count(acctno)
+  3    from cashtest.glsinacctlist a
+  4   where cancelflag = '0'
+  5     and trancode not in ('548300', 'T00000')
+  6     and acctno = '78200188000123278'
+  7     and trandate = '2015-06-01'
+  8     and (((trancode = 'TC0001' or trancode = 'TP0001') and
+  9         (flag = '1' or flag = '2')) or
+ 10         (trancode <> 'TC0001' and trancode <> 'TP0001' and
+ 11         flag not in ('B', 'C', 'D', 'E')))
+ 12     and not exists (select /*+ use_hash(a,b) */ 1
+ 13            from cashtest.GLSINACCTLIST b
+ 14           where acctno = a.acctno
+ 15             and trandate = a.trandate
+ 16             and cancelstan = a.serseqno
+ 17             and cancelflag = '1');  
+
+Explained.
+
+Elapsed: 00:00:00.01
+SQL> @?/rdbms/admin/utlxpls
+
+PLAN_TABLE_OUTPUT
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Plan hash value: 293696021
+
+---------------------------------------------------------------------------------------------------
+| Id  | Operation                     | Name              | Rows  | Bytes | Cost (%CPU)| Time     |
+---------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT              |                   |     1 |   118 |    11  (10)| 00:00:01 |
+|   1 |  SORT AGGREGATE               |                   |     1 |   118 |            |          |
+|*  2 |   HASH JOIN ANTI              |                   |     1 |   118 |    11  (10)| 00:00:01 |
+|*  3 |    TABLE ACCESS BY INDEX ROWID| GLSINACCTLIST     |     1 |    69 |     5   (0)| 00:00:01 |
+|*  4 |     INDEX RANGE SCAN          | GLSINACCTLIST_IDX |     1 |       |     4   (0)| 00:00:01 |
+|*  5 |    TABLE ACCESS BY INDEX ROWID| GLSINACCTLIST     |     1 |    49 |     5   (0)| 00:00:01 |
+|*  6 |     INDEX RANGE SCAN          | GLSINACCTLIST_IDX |     1 |       |     4   (0)| 00:00:01 |
+---------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   2 - access("ACCTNO"="A"."ACCTNO" AND "TRANDATE"="A"."TRANDATE" AND
+              "CANCELSTAN"="A"."SERSEQNO")
+   3 - filter("CANCELFLAG"='0' AND "TRANCODE"<>'548300' AND "TRANCODE"<>'T00000' AND
+              ("TRANCODE"<>'TC0001' AND "TRANCODE"<>'TP0001' AND "FLAG"<>'B' AND "FLAG"<>'C' AND
+              "FLAG"<>'D' AND "FLAG"<>'E' OR ("FLAG"='1' OR "FLAG"='2') AND ("TRANCODE"='TC0001' OR
+              "TRANCODE"='TP0001')))
+   4 - access("ACCTNO"='78200188000123278' AND "TRANDATE"='2015-06-01')
+   5 - filter("CANCELFLAG"='1')
+   6 - access("ACCTNO"='78200188000123278' AND "TRANDATE"='2015-06-01')
+
+26 rows selected.
+
+Elapsed: 00:00:00.02
+
+
+
+这时发现执行计划中使用hash连接，而且执行速度有了明显的提高，至此，问题解决。
+

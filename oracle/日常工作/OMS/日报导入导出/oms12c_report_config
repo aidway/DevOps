@@ -1,0 +1,24 @@
+注意：以下所有内容均区分大小写
+
+## 是否是rac，填N或Y
+ISRAC=Y
+
+## 如果ISRAC=Y，需填写此项，否则为空
+DB_NAME=
+
+## 实例名
+INSTANCE_NAME=powercc1,powercc2
+
+
+
+## 日报名称
+## 格式: 日报xxx-系统名称-实例名
+## 示例: 日报110-客服交易系统-powercc1,日报111-客服交易系统-powercc2
+DAILY_NAME=日报110-客服交易系统-powercc1,日报111-客服交易系统-powercc2
+
+
+
+## 周报名称
+## 格式: 周报xxx-host-实例名
+## 示例: 周报100-host-powercc1,周报101-host-powercc2
+WEEKLY_NAME=周报100-host-powercc1,周报101-host-powercc2

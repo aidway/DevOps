@@ -1,0 +1,20 @@
+背景：收单投产sql，为了去重，竟然可以如此~
+select * from t_eb_zfy_journal where acctdate >= '20150513' and acctdate <= '20150520'
+union
+select * from t_eb_zfy_journal where acctdate >= '20150513' and acctdate <= '20150520';
+
+
+本人收单投产sql审核回复
+-------------------------------------------------------------------------------
+您好：
+1.执行时注意归档空间使用率和undo表空间使用率，防止出现归档目录满或undo满的情况。
+2.create table ... 时需要指明表空间。
+3.如果删除的数据量比较大，而且表上有索引，建议delete结束后对索引进行rebuild操作。
+ 
+另：
+create table  xqfxqf as (select * from t_eb_zfy_journal where acctdate >= '20150513' and acctdate <= '20150520'
+                         union
+                         select * from t_eb_zfy_journal where acctdate >= '20150513' and acctdate <= '20150520'
+                         );
+如果是为了去重的话，是否可以考虑使用distinct。
+请知晓。

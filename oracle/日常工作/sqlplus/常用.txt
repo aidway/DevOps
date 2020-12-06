@@ -1,0 +1,20 @@
+中文乱码：export NLS_LANG=AMERICAN_CHINA.UTF8
+export NLS_LANG=AMERICAN_AMERICA.ZHS16GBK
+
+
+set markup html on spool on 
+set markup html off spool off 
+
+
+若获取元数据库显示不全，则设置long参数
+set long 30000
+
+
+l：列出sql
+c：替换sql
+a：追加sql
+
+
+
+sqlplus -prelim / as sysdba
+shutdown abort

@@ -1,0 +1,19 @@
+1.检查监听
+  ps -ef | grep tns
+
+2.检查数据库连接
+  ps -aef | grep oracle$ORACLE_SID
+
+3./etc/oraInst.loc 定义inventory_loc
+oracle@SM-DAW-T03:/etc> cat /etc/oraInst.loc
+inventory_loc=/oracle/app/oraInventory
+inst_group=oinstall
+
+第一个是Inventory所在的目录位置，
+第二个是安装Oracle的组的名称。这个inst_group参数十分重要，它会在link Oracle映像的时候被使用，如果这个参数设置错了，那么link出来的Oracle映像就无法被正常使用了。
+
+4./etc/oratab 定义是否可以通过dbstart启动数据库
+
+5.通过进程号查询启动进程的环境变量
+ps -ef | grep ora_
+cat /proc/$PID/environ

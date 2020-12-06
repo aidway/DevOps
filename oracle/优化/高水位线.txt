@@ -1,0 +1,28 @@
+a) 首先对表进行分析 :ANALYZE TABLE ICARDKMS.RSAKEYPOOL COMPUTE STATISTICS;
+b)
+  SELECT blocks, empty_blocks, num_rows
+    FROM dba_tables
+   WHERE table_name = 'RSAKEYPOOL';
+
+说明：
+BLOCKS 列代表该表中曾经使用过的数据库块的数目，即水线。
+EMPTY_BLOCKS 代表分配给该表，但是在水线以上的数据库块，即从来没有使用的数据块。
+
+五、修正ORACLE表的高水位线 在ORACLE中，执行对表的删除操作不会降低该表的高水位线。而全表扫描将始终读取一个段(extent) 中所有低于 高水位线标记的块。如果在执行删除操作后不降低高水位线标记，则将导致查询语句的性能低下。下面的方法都 可以降低高水位线标记。
+
+1.执行表重建指令 alter table table_name move;
+(在线转移表空间ALTER TABLE 。。。 MOVE TABLESPACE 。。。ALTER TABLE 。。。 MOVE 后面不跟参数也行，
+ 不跟参数表还是在原来的表空间，move后记住重建索引。如果以后还要继续向这个表增加数据，没有必要move，
+ 只是释放出来的空间，只能这个表用，其他的表或者segment无法使用该空间) 
+
+2.执行alter table table_name shrink space; 会加X锁，阻塞DML语句
+注意，此命令为Oracle 10g新增功能， 再执行该指令之前必须允许行移动alter table table_name enable row movement;
+alter table ICARDKMS.RSAKEYPOOL enable row movement;
+alter table ICARDKMS.RSAKEYPOOL shrink space;
+alter table ICARDKMS.RSAKEYPOOL disable row movement;
+
+3.复制要保留的数据到临时表t，drop原表，然后rename临时表t为原表 
+4.emp / imp 
+5.alter table table_name deallocate unused 
+6.truncate
+

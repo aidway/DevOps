@@ -1,0 +1,188 @@
+oracle10g的sysaux空间暴增与空间回收
+
+ 
+
+在Oracle10中表空间SYSAUX引入，oracle把统计信息存储在这里，这也是为了更好的优化system表空间，我们可以用视图V$SYSAUX_OCCUPANTS 查看，oracle有哪些数据存贮在SYSAUX中。
+
+SELECT occupant_name, space_usage_kbytes FROM V$SYSAUX_OCCUPANTS;
+
+ 
+
+oracle的SM/AWR, SM/ADVISOR, SM/OPTSTAT and SM/OTHER的统计信息都存储在SYSAUX中，这里重点介绍SM/OPTSTAT。
+
+SM/OPTSTAT：用于存储老版本的优化统计信息，在oracle10g中，在我们手动或自动更新统计信息使oracle选择了错误的执行计划。oracle10g是可以恢复旧版本的统计信息，这个统计信息默认保存31天
+
+ 
+
+查询当前SM/OPTSTAT的统计信息的保存时间
+SQL> select dbms_stats.get_stats_history_retention from dual;
+ 
+GET_STATS_HISTORY_RETENTION
+---------------------------
+                         31
+ 
+修改SM/OPTSTAT的统计信息的保存时间为10天
+SQL> exec dbms_stats.alter_stats_history_retention(10);
+ 
+PL/SQL procedure successfully completed
+ 
+SQL> select dbms_stats.get_stats_history_retention from dual;
+ 
+GET_STATS_HISTORY_RETENTION
+---------------------------
+                         10
+ 
+SQL> 
+
+删除16天前的统计数据
+SQL> exec dbms_stats.purge_stats(sysdate-16);
+
+PL/SQL procedure successfully completed
+ 
+SQL> 
+
+ 
+
+查看当前有效的统计数据是到什么时间的
+SQL> select DBMS_STATS.GET_STATS_HISTORY_AVAILABILITY from dual;
+ 
+GET_STATS_HISTORY_AVAILABILITY
+--------------------------------------------------------------------------------
+12-2月 -12 07.15.49.000000000 下午 +08:00
+
+再删除7天前的统计数据
+SQL> exec dbms_stats.purge_stats(sysdate-7);
+ 
+PL/SQL procedure successfully completed
+ 
+这个时候发现有效的统计信息时间已经变了 
+SQL> select DBMS_STATS.GET_STATS_HISTORY_AVAILABILITY from dual;
+ 
+GET_STATS_HISTORY_AVAILABILITY
+--------------------------------------------------------------------------------
+14-2月 -12 07.15.57.000000000 下午 +08:00
+ 
+SQL> 
+
+这个时候虽然删除了数据，但空间还没有回收，如何回收空间呢？
+
+ 
+
+没有释放空间是因为“purge_stats”用delete的方式删除数据，虽然数据没了，但是HWM还没降下来，查看OPTSTAT使用哪些表，然后降低其高水位即可。
+SQL> SELECT s.object_name from dba_objects s where s.object_name like '%OPTSTAT%' and s.object_type='TABLE'
+  2  ;
+ 
+OBJECT_NAME
+--------------------------------------------------------------------------------
+WRI$_OPTSTAT_TAB_HISTORY
+WRI$_OPTSTAT_IND_HISTORY
+WRI$_OPTSTAT_HISTHEAD_HISTORY
+WRI$_OPTSTAT_HISTGRM_HISTORY
+WRI$_OPTSTAT_AUX_HISTORY
+WRI$_OPTSTAT_OPR
+OPTSTAT_HIST_CONTROL$
+ 
+7 rows selected
+ 
+SQL> 
+
+ 
+
+再结合如下sql判断哪个表大，然后就move哪个表
+SQL> select a.table_name,a.num_rows from dba_tables a where  a.tablespace_name='SYSAUX' and a.table_name like '%OPTSTAT%'
+  2  ;
+ 
+TABLE_NAME                       NUM_ROWS
+------------------------------ ----------
+WRI$_OPTSTAT_OPR                      151
+WRI$_OPTSTAT_AUX_HISTORY                0
+WRI$_OPTSTAT_HISTGRM_HISTORY       139933
+WRI$_OPTSTAT_HISTHEAD_HISTORY       14406
+WRI$_OPTSTAT_IND_HISTORY             1196
+WRI$_OPTSTAT_TAB_HISTORY             1323
+ 
+6 rows selected
+ 
+SQL> 
+
+再用如下语句查出相关表的索引，因为move表，索引会失效，需要重建索引
+SQL> select i.index_name,i.table_name,i.status,i.table_owner
+     from dba_indexes i,dba_objects s where i.table_name=s.object_name and  s.object_name like '%OPTSTAT%' and s.object_type='TABLE'
+    ;
+ 
+INDEX_NAME                     TABLE_NAME                     STATUS   TABLE_OWNER
+------------------------------ ------------------------------ -------- ------------------------------
+I_WRI$_OPTSTAT_TAB_OBJ#_ST     WRI$_OPTSTAT_TAB_HISTORY       VALID    SYS
+I_WRI$_OPTSTAT_TAB_ST          WRI$_OPTSTAT_TAB_HISTORY       VALID    SYS
+I_WRI$_OPTSTAT_IND_OBJ#_ST     WRI$_OPTSTAT_IND_HISTORY       VALID    SYS
+I_WRI$_OPTSTAT_IND_ST          WRI$_OPTSTAT_IND_HISTORY       VALID    SYS
+I_WRI$_OPTSTAT_HH_OBJ_ICOL_ST  WRI$_OPTSTAT_HISTHEAD_HISTORY  VALID    SYS
+I_WRI$_OPTSTAT_HH_ST           WRI$_OPTSTAT_HISTHEAD_HISTORY  VALID    SYS
+I_WRI$_OPTSTAT_H_OBJ#_ICOL#_ST WRI$_OPTSTAT_HISTGRM_HISTORY   VALID    SYS
+I_WRI$_OPTSTAT_H_ST            WRI$_OPTSTAT_HISTGRM_HISTORY   VALID    SYS
+I_WRI$_OPTSTAT_AUX_ST          WRI$_OPTSTAT_AUX_HISTORY       VALID    SYS
+I_WRI$_OPTSTAT_OPR_STIME       WRI$_OPTSTAT_OPR               VALID    SYS
+ 
+10 rows selected
+ 
+SQL> 
+
+
+降低HWM
+sql> alter table WRI$_OPTSTAT_TAB_HISTORY move;
+sql> alter table WRI$_OPTSTAT_OPR move;
+sql> alter table WRI$_OPTSTAT_IND_HISTORY move;
+sql> alter table WRI$_OPTSTAT_HISTHEAD_HISTORY move;
+sql> alter table WRI$_OPTSTAT_HISTGRM_HISTORY move;
+sql> alter table WRI$_OPTSTAT_AUX_HISTORY move;
+sql> alter table OPTSTAT_HIST_CONTROL$ move;
+
+ 
+
+重建索引
+alter index I_WRI$_OPTSTAT_TAB_OBJ#_ST  rebuild online;
+alter index I_WRI$_OPTSTAT_TAB_ST rebuild online;
+alter index I_WRI$_OPTSTAT_IND_OBJ#_ST rebuild online;
+alter index I_WRI$_OPTSTAT_IND_ST rebuild online;
+alter index I_WRI$_OPTSTAT_HH_OBJ_ICOL_ST rebuild online;
+alter index I_WRI$_OPTSTAT_HH_ST rebuild online;
+alter index I_WRI$_OPTSTAT_H_OBJ#_ICOL#_ST rebuild online;
+alter index I_WRI$_OPTSTAT_H_ST rebuild online;
+alter index I_WRI$_OPTSTAT_AUX_ST rebuild online;
+alter index I_WRI$_OPTSTAT_OPR_STIME rebuild online;
+
+ 
+
+如果索引编译不成功，就要create indexe
+
+用如下语句生成DDL语句
+SQL> set long 4000
+SQL> select dbms_metadata.get_ddl('INDEX','I_WRI$_OPTSTAT_IND_OBJ#_ST','SYS') from dual;
+SQL> select dbms_metadata.get_ddl('INDEX','I_WRI$_OPTSTAT_TAB_ST','SYS') from dual;
+
+ 
+
+如何恢复统计信息
+
+ 
+
+用如下语句查到统计信息的时间点
+select TABLE_NAME, STATS_UPDATE_TIME from dba_tab_stats_history；
+
+ 
+
+可以按需要根据时间点恢复统计信息
+execute DBMS_STATS.RESTORE_TABLE_STATS ('owner','table',date)
+execute DBMS_STATS.RESTORE_DATABASE_STATS(date)
+execute DBMS_STATS.RESTORE_DICTIONARY_STATS(date)
+execute DBMS_STATS.RESTORE_FIXED_OBJECTS_STATS(date)
+execute DBMS_STATS.RESTORE_SCHEMA_STATS('owner',date)
+execute DBMS_STATS.RESTORE_SYSTEM_STATS(date)
+
+ 
+
+例如：
+SQL> execute dbms_stats.restore_table_stats ('SKATE','BK_ADMIN',sysdate -1);
+ 
+PL/SQL procedure successfully completed
+ 

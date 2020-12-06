@@ -1,0 +1,22 @@
+1.查看ogg版本
+./ggsci -v
+
+2.查看进程信息
+view report mgr
+info mgr
+stats rep_epay
+
+3.配置进程参数
+view param mgr
+edit param mgr
+
+4.删除进程
+dblogin userid goldengate password goldengate
+delete DPE_EBPP
+delete EXT_EBPP
+
+
+
+如果因删除数据导致复制进程延迟
+-----------------------------
+APPLYNOOPUPDATES

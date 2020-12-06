@@ -1,0 +1,38 @@
+2015.5.25
+简介：文件存在，但是用户没权限访问
+问题：现金管理测试环境，使用cashtest用户启动应用服务时报错，
+exec cmssrv_01 -A -r  :
+        /usr/lib/hpux64/dld.so: Unable to find library 'libclntsh.so.10.1'.
+CMDTUX_CAT:819: INFO: Process id=20148 Assume started (pipe).
+
+
+-- 使用root查找该文件
+SD9ppF[/usr/lib/hpux64]find / -name libclntsh.so.10.1
+/oracle/product/10.2.0/lib/libclntsh.so.10.1
+/oracle/product/10.2.0/lib32/libclntsh.so.10.1
+
+-- root检查文件权限
+$ ll /oracle/product/10.2.0/lib/libclntsh.so.10.1
+-rwxr-xr-x   1 oracle     oinstall   36811344 May 25 15:54 /oracle/product/10.2.0/lib/libclntsh.so.10.1
+$ ll /oracle/product/10.2.0/lib32/libclntsh.so.10.1
+-rwxr-xr-x   1 oracle     oinstall   35934664 May 25 15:54 /oracle/product/10.2.0/lib32/libclntsh.so.10.1
+
+
+-- 然后检查lib目录的权限，发现others没有访问该目录的权限
+$ ll -d /oracle/product/10.2.0/lib
+drwxr-x---   4 oracle     oinstall      6144 May 25 15:33 /oracle/product/10.2.0/lib
+
+
+-- 检查cashtest用户的信息
+$ id cashtest
+uid=122(cashtest) gid=104(dba)
+
+
+-- 结论
+cashtest用户没有访问libclntsh.so.10.1的权限
+
+
+-- 解决办法：将cashtest加入到oinstall组
+usermod -G oinstall  cashtest 
+
+

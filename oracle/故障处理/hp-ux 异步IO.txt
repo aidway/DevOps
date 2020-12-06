@@ -1,0 +1,92 @@
+重点提示：如果是hp-ux系统，且未开启异步io，将会在background_dump_dest产生大量的trace文件。
+
+
+
+检查HP-UX是否打开异步IO，如果未开启，将会在trace目录产生大量trc文件
+正确的配置如下：
+1. ll /dev/async
+   正确的权限是666，设备号0x000000
+2. cat /etc/privgroup
+   dba MLOCK RTSCHED RTPRIO
+
+
+如果是RAC系统，privgroup文件应该有两行：
+dba  MLOCK  RTSCHED  RTPRIO
+asmadmin  MLOCK  RTSCHED  RTPRIO
+
+
+
+
+各位，保险起见，先看看你的Oracle进程owner是谁？
+ 
+Ps –ef|grep oracle
+     cbs 14780 14777  0  Mar 31  ?         0:00 oracleCBS (DESCRIPTION=(LOCAL=YES)(ADDRESS=(PROTOCOL=beq)))
+ 
+要把这个owner的组加入 privgroup文件
+
+
+
+
+
+解决办法：
+#######################################
+#变更原因：部分HPUX系统中未开启异步IO
+#变更目标：开启HPUX系统的异步IO
+#######################################
+
+
+###########################
+#变更步骤
+###########################
+
+1.查看oracle进程的owner，要将该owner所在的group加入privgroup文件。单实例一般为dba组，rac一般为dba和asmadmin组。
+ps -ef | grep oracle
+
+2.若数据库为文件系统类型的，需要修改：
+alter system set disk_asynch_io=false scope=spfile;
+alter system set filesystemio_options=directIO scope=spfile;
+视情况重启库后生效
+
+
+3.若数据库为单实例，步骤如下：
+/usr/sbin/setprivgrp dba MLOCK RTPRIO RTSCHED
+getprivgrp dba
+ 
+vi /etc/privgroup 增加以下一行
+dba MLOCK RTSCHED RTPRIO
+
+cat /etc/privgroup
+
+cd $ORACLE_BASE/diag/rdbms/<dbname>/<instance_name>/trace
+ls *.trm |xargs rm -f
+ls *.trc |xargs rm -f
+
+
+4.若数据库为RAC，步骤如下；
+/usr/sbin/setprivgrp dba MLOCK RTPRIO RTSCHED
+/usr/sbin/setprivgrp asmadmin  MLOCK  RTSCHED  RTPRIO
+getprivgrp dba 
+getprivgrp asmadmin  
+
+vi /etc/privgroup 增加以下两行
+dba MLOCK RTSCHED RTPRIO
+asmadmin  MLOCK  RTSCHED  RTPRIO
+
+cat /etc/privgroup
+
+cd $ORACLE_BASE/diag/rdbms/<dbname>/<instance_name>/trace
+ls *.trm |xargs rm -f
+ls *.trc |xargs rm -f
+
+
+5.验证步骤
+getprivgrp dba
+getprivgrp asmadmin  --RAC
+cat /etc/privgroup
+
+
+6.回退步骤
+/usr/sbin/setprivgrp dba
+/usr/sbin/setprivgrp asmadmin 
+rm /etc/privgroup
+

@@ -1,0 +1,77 @@
+问题描述：某表约6万行，没有lob字段，但是该表的大小却约为4G。
+
+
+
+-- 1.查询表大小
+SQL> select s.segment_name, s.BYTES / 1024 / 1024, s.blocks,s.extents,s.initial_extent,s.next_extent
+  2    from dba_segments s
+  3   where s.owner = 'EBPPSC'
+  4     and s.segment_name = 'T_EB_MER_CLR_RESULT';
+SEGMENT_NAME                   S.BYTES/1024/1024     BLOCKS    EXTENTS INITIAL_EXTENT NEXT_EXTENT
+------------------------------ ----------------- ---------- ---------- -------------- -----------
+T_EB_MER_CLR_RESULT                         4105     525440         74     4294967296     1048576
+
+-- 2.查询表的行数
+SQL> select count(*) from EBPPSC.T_EB_MER_CLR_RESULT;
+  COUNT(*)
+----------
+     59128
+
+-- 3.查询表的数据分布在多少个块上
+SQL> select count(distinct dbms_rowid.rowid_block_number(rowid)) block_cnts
+  2    from EBPPSC.T_EB_MER_CLR_RESULT;
+BLOCK_CNTS
+----------
+      2917
+
+-- 4.查询每个块上有多少行数据
+select dbms_rowid.rowid_block_number(rowid) block_num,
+       count(*) rows_per_block
+  from EBPPSC.T_EB_MER_CLR_RESULT
+ group by dbms_rowid.rowid_block_number(rowid)
+ order by rows_per_block desc;
+..... 
+ 
+	 	 
+-- 5.查询空块数目
+SQL> analyze table EBPPSC.T_EB_MER_CLR_RESULT compute statistics;
+SQL>  select table_name,num_rows,blocks, empty_blocks
+  2     from dba_tables
+  3    where table_name = 'T_EB_MER_CLR_RESULT'
+  4      and owner = 'EBPPSC';
+
+TABLE_NAME                       NUM_ROWS     BLOCKS EMPTY_BLOCKS
+------------------------------ ---------- ---------- ------------
+T_EB_MER_CLR_RESULT                 59128       3038       522402
+
+-- 问题分析：exp命令的compress参数默认为Y，项目组没指定该参数，故导致initial_extent太大，表现为空块数量过多
+-- 6.修正：降低高水位，调整initial_extent
+alter table EBPPSC.T_EB_MER_CLR_RESULT enable row movement;
+alter table EBPPSC.T_EB_MER_CLR_RESULT shrink space;
+alter table EBPPSC.T_EB_MER_CLR_RESULT disable row movement;
+alter table EBPPSC.T_EB_MER_CLR_RESULT move storage(initial 128k);
+
+
+-- 7.查看修正后结果
+SQL> select s.segment_name, s.BYTES / 1024 / 1024, s.blocks,s.extents,s.initial_extent,s.next_extent
+  2    from dba_segments s
+  3   where s.owner = 'EBPPSC'
+  4     and s.segment_name = 'T_EB_MER_CLR_RESULT';
+
+SEGMENT_NAME                   S.BYTES/1024/1024     BLOCKS    EXTENTS INITIAL_EXTENT NEXT_EXTENT
+------------------------------ ----------------- ---------- ---------- -------------- -----------
+T_EB_MER_CLR_RESULT                           24       3072         39         131072     1048576
+
+SQL> analyze table EBPPSC.T_EB_MER_CLR_RESULT compute statistics;
+SQL> select table_name,num_rows,blocks, empty_blocks
+  2    from dba_tables
+  3   where table_name = 'T_EB_MER_CLR_RESULT'
+  4     and owner = 'EBPPSC';
+
+TABLE_NAME                       NUM_ROWS     BLOCKS EMPTY_BLOCKS
+------------------------------ ---------- ---------- ------------
+T_EB_MER_CLR_RESULT                 59128       2981           91
+
+
+
+总结：使用exp的时候，请指定COMPRESS=n

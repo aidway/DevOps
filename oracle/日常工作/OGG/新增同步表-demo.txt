@@ -1,0 +1,67 @@
+1.源端打开表t_pb_log的附件日志
+sqlplus / as sysdba
+ALTER TABLE  pbcebdb.t_pb_log  ADD SUPPLEMENTAL LOG DATA (PRIMARY KEY) COLUMNS;
+ALTER TABLE  pbcebdb.t_pb_log  ADD SUPPLEMENTAL LOG DATA (UNIQUE) COLUMNS;
+ALTER TABLE  pbcebdb.t_pb_log  ADD SUPPLEMENTAL LOG DATA (FOREIGN KEY) COLUMNS;
+
+
+2.源端停止dpe进程和ext进程
+cd /GoldenGate/goldengate
+./ggsci
+info all
+stop ext01
+stop dpe01
+
+
+3.修改源端同步表配置
+cd /GoldenGate/goldengate/dirprm
+vi dpe01.prm
+------------------------------
+table pbcebdb.t_pb_log;
+
+vi ext01.prm
+-------------------------------
+table pbcebdb.t_pb_log;
+
+
+4.源端启动dpe进程和ext进程
+cd /GoldenGate/goldengate
+./ggsci
+info all
+start ext01
+start dpe01
+
+
+5.目标端停止rep
+cd  /GoldenGate/goldengate
+./ggsci info all
+stop rep_ebp2
+
+
+6.目标端添加同步表配置
+cd  /GoldenGate/goldengate/dirprm
+vi rep_ebp2.prm
+-------------------------------
+MAP pbcebdb.T_PB_LOG , target  pbcebdb.T_PB_LOG;
+
+
+7.源端查出scn
+select dbms_flashback.get_system_change_number from dual;
+
+
+8.源端导出t_pb_log表，并传到目标端
+-- /oraarch/expdp_db_struc_ebppdb
+expdp pbcebdb/pbcebdb directory=DATAPUMP_SCRIPTS_DIR dumpfile=t_pb_log.dmp logfile=t_pb_log.log tables=T_PB_LOG  flashback_scn=&&scn version=10.2.0.5 query=T_PB_LOG:\"where TRANDATE \>= \'20150721\'\" 
+
+
+9.目标端导入表
+-- /ora_arch/backup
+impdp pbcebdb/pbcebdb directory=BACKUP dumpfile=t_pb_log.dmp logfile=t_pb_log.log tables=T_PB_LOG remap_tablespace=PBLOG_TBLSPC:MONITOR_TBLSPC,PB_TBLSPC:MONITOR_TBLSPC,POSP_INDXSPC:MONITOR_IDXSPC  TABLE_EXISTS_ACTION=append 
+
+
+
+10. 启动目标端的Replicat 进程
+cd  /GoldenGate/goldengate
+./ggsci
+GGSCI>start rep_ebp2,aftercsn &&scn
+

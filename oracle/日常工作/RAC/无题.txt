@@ -1,0 +1,93 @@
+OCR：解决“健忘”问题，存储集群的配置信息，以key-value的形式存放。
+ocr.loc记录指定的位置
+每个节点在内存中都有一份OCR内容的拷贝，但是只有一个节点的OCR process能读写OCR Disk的内容，该节点称为OCR Master节点，负责更新本地和其它节点的OCR Cache内容。
+
+
+
+Voting Disk
+查看Voting Disk位置： crsctl query css votedisk
+
+
+Clusterware后台进程：CRSD、CSSD、EVMD
+
+1.OCSSD：Clusterware中最关键的进程，该进程提供CSS（Cluster Synchronization Service）服务，CSS通过多种心跳机制实时监控集群健康状态，提供脑裂保护等基础集群服务功能。
+
+CSS服务有两种心跳机制：通过私有网络的Network Heartbeat；通过Voting Disk的Disk Heartbeat
+
+对于Network Heartbeat，时延叫做MC（MisCount），对于Disk Heartbeat，时延称为IOT（I/O Timeout），单位都是s
+
+grid@IBL055P1:/home/grid$crsctl get css misscount  
+CRS-4678: Successful get misscount 30 for Cluster Synchronization Services.
+
+grid@IBL055P1:/home/grid$crsctl get css disktimeout
+CRS-4678: Successful get disktimeout 200 for Cluster Synchronization Services.
+
+
+
+
+DLM（Distributed Lock Management） 分布式锁管理器
+
+Oracle集群发展历史：
+OPS（Oracle Parallel Server） -> RAC（Real Application Cluster）
+
+
+Cache Fusion:内存融合，由GCS和GES两个服务组成，前者专职于数据块在实例间传递，后者负责锁管理。
+Cache Fusion Resource：特指数据块资源，如普通数据块、索引数据块、段头块
+Non-Cache Fusion Resource：非数据块资源
+
+
+GRD(Global Resource Directory)
+
+
+ONS(Oracle Notification Service)
+
+进程：
+1.LMSn：Cache Fusion的主要进程，负责数据块在实例间传递，对应的服务叫GCS（Global Cache Service），进程的名称来源于Lock Manager Service。
+该进程的数量由参数GCS_SERVER_PROCESSES进行控制，默认是2，取值范围是0~9
+
+2.LMD：负责的是Global Enqueue Service（GES）。具体来说，该进程负责在多个实例之间协调对数据块的访问顺序，保证数据的一致性访问。与LMSn进程
+的GCS服务还有GRD共同构成RAC最核心的功能Cache Fusion
+
+3.LCK
+该进程负责Non-Cache Fusion资源的同步访问，每个实例有一个LCK进程
+
+4.LMON
+各个实例的LMON进程会定期通信，以检查集群节点中各节点的健康状态，当某个节点出现故障时，负责集群重构、GRD恢复等操作，提供的服务叫做Cluster
+Group Services（CGS）和Node Management（NM）
+
+5.DIAG
+监控实例的健康状态，并在实例出现运行错误时收集诊断数据记录到alert.log中
+
+6.GSD
+负责从客户端工具，比如srvctl接收用户命令，为用户提供管理接口。
+
+
+Clusterware和RAC之间的关系：
+1.Clusterware是由不同厂商包括Oracle提供的，用户维护管理节点（node）的状态
+2.RAC instance是构建在Clusterware之上的数据库应用或者叫instance的集群
+3.Clusterware维护的是节点集群，RAC维护的是instance集群
+4.二者都有各自的机制来进行状态检测及重构，即RAC集群虽然使用Clusterware但不完全依赖Clusterware
+
+
+ASM实例：先与数据库实例启动，和数据库实例同步运行，迟于数据库实例关闭
+
+
+HBA卡：host bus adapter 用于连接共享存储
+
+
+
+健忘症：该问题是由于每个节点上都有一份集群配置信息，修改节点的配置信息得不到同步。
+解决办法：整个集群中只保留一份集群配置文件，使用OCR disk文件解决该问题。
+
+
+
+脑裂：在集群环境中，节点间通过心跳机制了解彼此的运行情况。假如心跳出了问题，每个节点都会认为自己是唯一的幸存者，会试图控制整个集群。因为数据
+是共享的，都来控制共享，势必会破坏共享数据的完整性和一致性。此时引入表决盘，通过投票机制，获得最高票数或最早到达的获得投票，此节点幸存，其它
+节点被踢出。在Oracle RAC中Voting Disk用来记录节点间成员的状态，出现脑裂时，仲裁哪个节点获得控制权，其它的节点被踢出。
+
+
+IO隔离：虽然节点被踢出了，但是并没有限制其对共享数据的访问，为了限制已踢出节点对共享数据的访问，必须进行IO隔离。RAC采取的是直接重启故障节点。
+
+
+
+

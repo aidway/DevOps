@@ -1,0 +1,46 @@
+2015.7.2
+部署ogg，同步时报错，查看目标端rep进程：
+GGSCI (P74011P2) 15> view report rep01
+..............
+
+Opened trail file ./dirdat/re000000 at 2015-07-02 15:50:13
+
+Source Context :
+  SourceModule            : [ggtrail.TrailFile]
+  SourceID                : [/scratch/pradshar/view_storage/pradshar_OneOffBugdb_13063534/oggcore/OpenSys/src/gglib/ggtrail/TrailFile.cpp]
+  SourceFunction          : [ggs::gglib::ggtrail::TrailFile::handleBlock(const uint8_t *, uint32_t, uint32_t &)]
+  SourceLine              : [378]
+
+2015-07-02 15:50:13  ERROR   OGG-01389  File header failed to parse tokens. File ./dirdat/re000000, last offset 835, data: 0x     343: 000000013A00000200003B
+000004000000013C000014000000101414141414141414141414141114141433000070300000070005455854303131000002000332000002000B33000002000234000002000135000002000036000
+00200013700003D003B56657273696F6E2031312E322E312E302E31204F4747434F52455F3131.
+..............
+
+原因：
+源端ogg版本是11.2，目标端ogg版本是11.1，在使用ogg安装脚本进行安装的时候没有指定OGGVER=11.1
+
+
+
+
+
+如果一台机器上安装了两个实例，oms agent需要装几个？
+
+
+
+goldengate目标端：
+GGSCI (BL685-157) 2> view param REP_EBP
+replicat rep_ebp
+setenv ( NLS_LANG = AMERICAN_AMERICA.US7ASCII)
+assumetargetdefs
+userid goldengate, password goldengate
+HANDLECOLLISIONS
+REPERROR DEFAULT, DISCARD
+discardfile ./dirrpt/rep_ebp.dsc, append, megabytes 100
+map pbcebdb.T_EB_BATCHSLD, target pbcebdb.T_EB_BATCHSLD, keycols (BUSITYPE, STAGENO, EVENTORDER);
+
+keycols含义：
+goldengate 学习系列8–当主键遇上keycols
+http://www.killdb.com/2015/06/10/ogg%E5%AD%A6%E4%B9%A0%E7%B3%BB%E5%88%978-%E5%BD%93%E4%B8%BB%E9%94%AE%E9%81%87%E4%B8%8Akeycols.html
+
+
+

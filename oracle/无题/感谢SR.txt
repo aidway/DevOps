@@ -1,0 +1,29 @@
+2015-08-28
+
+Hi,
+Oracle Enterprise Manager 10g Release 5 Grid Control 10.2.0.5.0.  
+Copyright (c) 1996, 2009 Oracle Corporation.  All rights reserved.
+---------------------------------------------------------------
+Agent Version     : 10.2.0.5.0
+OMS Version       : 10.2.0.5.0
+Protocol Version  : 10.2.0.5.0
+
+
+Oracle Enterprise Manager Cloud Control 12c Release 3  
+Copyright (c) 1996, 2013 Oracle Corporation.  All rights reserved.
+---------------------------------------------------------------
+Agent Version     : 12.1.0.3.0
+OMS Version       : 12.1.0.3.0
+Protocol Version  : 12.1.0.1.0
+
+
+In our production environments,there exists Oracle database 10g and Oracle database 11g.
+We use oms10g to monitor Oracle database 10g,and use oms12c to monitor Oracle database 11g.
+After we upgrading oracle10g to oracle11g,we deinstall oms10g agent,and then install oms12c agent.
+So the information about administrators in oms10g does not exist in oms12c,as I have pointed,we
+need to re-create administrators and re-grant privileges.
+
+Regards.
+
+
+

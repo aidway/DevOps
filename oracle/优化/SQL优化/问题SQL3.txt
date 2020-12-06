@@ -1,0 +1,117 @@
+2015-09-09
+
+itump sql优化，执行时间由5min降低到1min。详见附件1。
+select /*+ full(s) */ REQCHNL, count(REQCHNL)
+  from pbcebdb.t_pb_log partition(P_20150908) s
+ where trandate = '20150908'
+   and trantime >= '000000'
+   and trantime < '240000'
+   AND REQCHNL in ('112')
+ group by REQCHNL;
+ 
+ 
+ 
+-- 附件1
+-- 全表扫描
+SQL> select /*+ full(s) */count(REQCHNL)
+  2    from pbcebdb.t_pb_log partition(P_20150908) s
+  3   where trandate = '20150908'
+  4     and trantime >= '000000'
+  5     and trantime < '240000'
+  6     AND REQCHNL in ('112');
+
+Elapsed: 00:01:07.58
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 540141391
+
+----------------------------------------------------------------------------------------------------
+| Id  | Operation               | Name     | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+----------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT        |          |     1 |    20 |   148K  (2)| 00:29:44 |       |       |
+|   1 |  SORT AGGREGATE         |          |     1 |    20 |            |          |       |       |
+|   2 |   PARTITION RANGE SINGLE|          |     1 |    20 |   148K  (2)| 00:29:44 |     3 |     3 |
+|*  3 |    TABLE ACCESS FULL    | T_PB_LOG |     1 |    20 |   148K  (2)| 00:29:44 |     3 |     3 |
+----------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - filter("REQCHNL"='112' AND "TRANDATE"='20150908' AND "TRANTIME">='000000' AND
+              "TRANTIME"<'240000')
+
+
+Statistics
+----------------------------------------------------------
+          1  recursive calls
+          0  db block gets
+     656471  consistent gets
+     522201  physical reads
+          0  redo size
+        524  bytes sent via SQL*Net to client
+        492  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+
+
+-- 索引扫描
+SQL> select REQCHNL, count(*)
+  2    from pbcebdb.t_pb_log partition(P_20150908)
+  3   where trandate = '20150908'
+  4     and trantime >= '000000'
+  5     and trantime < '240000'
+  6     AND REQCHNL in ('112')
+  7   group by REQCHNL;
+
+Elapsed: 00:04:47.02
+
+Execution Plan
+----------------------------------------------------------
+Plan hash value: 3279058603
+
+---------------------------------------------------------------------------------------------------------------------
+| Id  | Operation                           | Name          | Rows  | Bytes | Cost (%CPU)| Time     | Pstart| Pstop |
+---------------------------------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT                    |               |     1 |    20 |     5   (0)| 00:00:01 |       |       |
+|   1 |  SORT GROUP BY NOSORT               |               |     1 |    20 |     5   (0)| 00:00:01 |       |       |
+|   2 |   PARTITION RANGE SINGLE            |               |     1 |    20 |     5   (0)| 00:00:01 |     3 |     3 |
+|*  3 |    TABLE ACCESS BY LOCAL INDEX ROWID| T_PB_LOG      |     1 |    20 |     5   (0)| 00:00:01 |     3 |     3 |
+|*  4 |     INDEX RANGE SCAN                | T_PB_LOG_IDX2 |     1 |       |     4   (0)| 00:00:01 |     3 |     3 |
+---------------------------------------------------------------------------------------------------------------------
+
+Predicate Information (identified by operation id):
+---------------------------------------------------
+
+   3 - filter("REQCHNL"='112')
+   4 - access("TRANDATE"='20150908' AND "TRANTIME">='000000' AND "TRANTIME"<'240000')
+
+
+Statistics
+----------------------------------------------------------
+          0  recursive calls
+          0  db block gets
+    3884606  consistent gets
+     952323  physical reads
+          0  redo size
+        587  bytes sent via SQL*Net to client
+        492  bytes received via SQL*Net from client
+          2  SQL*Net roundtrips to/from client
+          0  sorts (memory)
+          0  sorts (disk)
+          1  rows processed
+
+
+
+
+
+-- 表上的索引信息
+INDEX_NAME                     COLUMN_NAME                    COLUMN_POSITION
+------------------------------ ------------------------------ ---------------
+T_PB_LOG_IDX1                  TRANDATE                                     1
+T_PB_LOG_IDX1                  SEQNUM                                       2
+T_PB_LOG_IDX2                  TRANDATE                                     1
+T_PB_LOG_IDX2                  TRANTIME                                     2
+

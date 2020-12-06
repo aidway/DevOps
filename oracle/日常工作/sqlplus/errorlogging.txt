@@ -1,0 +1,92 @@
+Oracle 11g中的errorlogging参数增强了错误信息的记录功能，可以做到错误信息“落地”的功能。
+
+1.Oracle版本信息
+sys@11gR2> select * from v$version;
+
+BANNER
+----------------------------------------------------------------
+Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - 64bit Production
+PL/SQL Release 11.2.0.1.0 - Production
+CORE    11.2.0.1.0      Production
+TNS for Linux: Version 11.2.0.1.0 - Production
+NLSRTL Version 11.2.0.1.0 - Production
+
+2.SQL*Plus中errorlogging参数的默认值
+sec@11gR2> show errorlogging
+errorlogging is OFF
+
+3.修改errorlogging选项为ON开启错误日志记录功能
+sec@11gR2> set errorlogging on
+sec@11gR2> show errorlogging
+errorlogging is ON TABLE SEC.SPERRORLOG
+
+注意再次提示的内容，“set errorlogging on”命令将自动在当前用户下创建表SPERRORLOG，用于记录错误信息。
+
+sec@11gR2> desc SPERRORLOG
+ Name          Null?    Type
+ ------------- -------- -------------------
+ USERNAME               VARCHAR2(256)
+ TIMESTAMP              TIMESTAMP(6)
+ SCRIPT                 VARCHAR2(1024)
+ IDENTIFIER             VARCHAR2(256)
+ MESSAGE                CLOB
+ STATEMENT              CLOB
+
+每个字段的定义描述如下：
+ USERNAME  -- 用户名
+ TIMESTAMP -- 错误发生的时间
+ SCRIPT    -- 脚本名称
+ IDENTIFIER-- 标识符
+ MESSAGE   -- 记录类似ORA、PLA或SP2错误信息
+ STATEMENT -- 错误信息描述
+
+4.模拟SQL*Plus中的错误
+sec@11gR2> show secooler
+SP2-0158: unknown SHOW option "secooler"
+sec@11gR2> help secooler
+SP2-0172: No HELP matching this topic was found.
+sec@11gR2> seeeeelect from tab;
+SP2-0734: unknown command beginning "seeeeelect..." - rest of line ignored.
+sec@11gR2> create table t as as select * from user_objects;
+create table t as as select * from user_objects
+                  *
+ERROR at line 1:
+ORA-00928: missing SELECT keyword
+
+sec@11gR2>
+
+5.通过查询SPERRORLOG表获得所有错误信息
+sec@11gR2> col USERNAME for a8
+sec@11gR2> col TIMESTAMP for a14
+sec@11gR2> col MESSAGE for a20
+sec@11gR2> col STATEMENT for a20
+sec@11gR2> select USERNAME,TIMESTAMP,MESSAGE,STATEMENT from SPERRORLOG;
+
+USERNAME TIMESTAMP      MESSAGE              STATEMENT
+-------- -------------- -------------------- --------------------
+SEC      06-MAY-10 03.5 SP2-0158: unknown SH show secooler
+         1.49.000000 PM OW option "secooler"
+
+SEC      06-MAY-10 03.5 SP2-0172: No HELP ma help secooler
+         1.51.000000 PM tching this topic wa
+                        s found.
+
+SEC      06-MAY-10 03.5 SP2-0734: unknown co seeeeelect from tab;
+         1.54.000000 PM mmand beginning "see
+                        eeelect..." - rest o
+                        f line ignored.
+
+SEC      06-MAY-10 03.5 ORA-00928: missing S create table t as as
+         1.55.000000 PM ELECT keyword         select * from user_
+                                             objects
+
+可见，曾经发生的错误信息一览无余。
+
+6.使用commit命令可以永久记录这些报错信息
+若想将报错信息永久的保留下来，只需要在session中输入commit命令便可。
+
+7.Oracle 11gR2官方文档中参考信息
+http://download.oracle.com/docs/cd/B28359_01/server.111/b31189/ch12040.htm#SQPUG160
+
+8.小结
+通过参数errorlogging的设置，可以非常便捷的开启错误信息记录功能。当在SQL*Plus中调试脚本或SQL语句时，该功能起到非常重要的作用。

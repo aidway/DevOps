@@ -1,0 +1,20 @@
+1.安装OSWatch
+tar xvf oswbb733.tar
+
+2.运行OSWatch
+cd /tmp/oswatcher/oswbb
+nohup ./startOSWbb.sh 10 48  &
+
+  
+
+3.停止OSWatch
+cd /tmp/oswatcher/oswbb
+./stopOSWbb.sh 
+
+
+4.图形化显示数据
+export DISPLAY=10.1.120.157:0.0
+xclock
+java -jar oswbba.jar -i /tmp/oswbb/archive
+
+注：以上所有操作均在root用户下执行。

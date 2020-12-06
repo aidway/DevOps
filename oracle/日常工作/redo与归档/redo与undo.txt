@@ -1,0 +1,18 @@
+redo:
+delete --> delete
+insert --> insert
+update --> update
+
+undo:
+delete --> insert  最多
+insert --> delete
+update --> update
+
+delete产生的undo最多，因为undo需要redo保护，所以一般delete产生的redo也最多。
+
+
+-- 查询某个session产生的redo size
+select a.name, b.value
+  from v$statname a, v$mystat b
+ where a.statistic# = b.statistic#
+   and a.NAME = 'redo size';

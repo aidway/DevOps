@@ -1,0 +1,29 @@
+2015.5.20
+问题：在hp-ux IA64 11.23（应该用11.31的系统）安装oracle11.2.0.3时报错，报错信息为[INS-30060]Check for group existence failed.
+排查过程：
+1.检查os所需的补丁，但安装文档是针对11.31系统的
+2.检查/tmp/CVU_11.2.0.3.0_oracle的权限，oracle用户是否有可执行权限
+3.cd /tmp/CVU_11.2.0.3.0_oracle
+  ./exectask
+  典型输出应该如下：
+USAGE:
+        exectask -checkNetCon <local IP> <dest IPAddress> 
+        exectask -checkNetReach <IPAddress> 
+        exectask -checkUID <user_id>
+        exectask -chkalive <process_name>
+        exectask -chkfile <file_name>
+        exectask -chkfileinsys <file_name>
+        exectask -chkgroup <group_name>
+        exectask -chkhostsfile
+        exectask -chkpackage <package_name>
+        exectask -chkport <port_number>
+        exectask -chkdirstruct <OracleBasePath> <CRSHome>
+        exectask -chkTCPclient <serverName> <serverIPAddress> <serverPortNumber>
+                               <clientName> <clientIPAddress>
+        exectask -chkuser <user_name>
+................................................
+
+
+  当时根据实际的输出，缺少某.so文件，从其它系统拷贝该文件，并建立链接，还是不能解决问题，最终放弃在该系统上安装oracle11.2.0.3。
+
+

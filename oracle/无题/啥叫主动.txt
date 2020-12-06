@@ -1,0 +1,30 @@
+2015-09-14
+
+关于oms12c server端是否需要访问oms12c agent端1521端口的总结：
+初步判断该端口不需要开通，数据库监听的状态应该由oms agent端进行判断，并把结果传送到oms server端
+提sr，sr说不需要开通，agent端可以读取listener文件，有插件可以判断监听状态
+在测试环境进行测试，发现在使用sql工作表进行查询的时候会用到1521端口
+在生产环境使用sql工作表，找网络协助抓包，发现用的是1532端口
+测试和生产不一致！
+思考吧，问题出在哪呢？
+.......
+重新检查测试环境添加实例目标的命令，发现指定的竟然是1521，生产上统一配置的是1532。
+至此，一切真相大白。
+初步判断是正确的...
+什么叫主动思考问题，这就是...
+
+
+
+附SR：
+SR 3-11353394821:Whether open port 1521 on instance server for oms12c repository server
+Hi,
+We use oms12c to monitor oracle11g,and our default instance listener port is 1521.
+We have added the Listener target in oms12c.Now I wonder how oms12c check the instance listener works ok or not.
+I mean that whether the oms12c server using some way to do this,just like by "telnet $instance_ip:1521",if so,we 
+will open the port 1521 on the instance server for oms12c repository server.Or the oms12c agent which works on the 
+instance server checks the status of the instance listener and then put the result to oms12c repository by some way,
+then we do not need to open the port.
+In a word,as we have strict requirements for network access,I just want to know should we open the port 1521 on the 
+instance server for oms12c repository server to access or not.
+
+Thanks.

@@ -1,0 +1,9 @@
+crs_stat -t
+crsctl stat res -t -init
+
+
+ /oracle/app/11.2.0/grid/log/ibl063va/crsd/crsd.log
+
+
+
+

@@ -1,0 +1,22 @@
+5.22
+股权托管性能测试环境cpu高，看awr报告，占用cpu高的sql如下：
+SELECT /* OPT_DYN_SAMP */ 
+  /*+ ALL_ROWS IGNORE_WHERE_CLAUSE NO_PARALLEL(SAMPLESUB) opt_param('parallel_execution_enabled', 'false') NO_PARALLEL_INDEX(SAMPLESUB) NO_SQL_TUNE */
+ NVL(SUM(C1), :"SYS_B_00"), NVL(SUM(C2), :"SYS_B_01")
+  FROM (SELECT /*+ IGNORE_WHERE_CLAUSE NO_PARALLEL("TBBATEXSHR") FULL("TBBATEXSHR") NO_PARALLEL_INDEX("TBBATEXSHR") */
+         :"SYS_B_02" AS C1,
+         CASE
+           WHEN "TBBATEXSHR"."ASSO_SERIAL" = :"SYS_B_03" AND
+                "TBBATEXSHR"."CLIENT_TYPE" = :"SYS_B_04" AND
+                "TBBATEXSHR"."ID_TYPE" = :"SYS_B_05" AND
+                "TBBATEXSHR"."ID_CODE" = :"SYS_B_06" THEN
+            :"SYS_B_07"
+           ELSE
+            :"SYS_B_08"
+         END AS C2
+          FROM "ESTOCK1"."TBBATEXSHR" SAMPLE BLOCK(:"SYS_B_09", :"SYS_B_10") SEED(:"SYS_B_11") "TBBATEXSHR") SAMPLESUB
+
+
+初步判断是由于用户没有收集统计信息，导致sql执行时采用动态采样所致，后收集应用用户的统计信息，问题解决。
+
+

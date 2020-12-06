@@ -1,0 +1,12 @@
+使用应用用户导入数据，报“一个dba导出的数据必须由另一个dba导入”，然后，为该应用用户赋予dba权限，成功导入。
+由于生产上应用用户是没有dba权限的，为了与生产一致，测试库的应用用户也不能拥有dba权限。
+于是，导入成功后将该应用用户的dba权限收回，并建议项目组使用sysdba用户导入。如下：
+imp \'/ as sysdba\'  file=/cebplms/plms.dmp fromuser=cebplms touser=cebplms  
+结果报错：ORA-01536: space quota exceeded for tablespace 'PLMS_01'
+这是什么鬼？为什么通过应用用户可以导入而使用sysdba反而空间不足呢？
+原因：配额真的不足！
+通过应用用户能够导入的原因，是为该用户赋予了dba权限，因此，此时对该用户来说表空间配额都是unlimited的。
+而使用sysdba前，我们回收了该用户的dba权限，那么此时，它对表空间PLMS_01的配额真的不足了~~~
+肿么办？当然是水来土掩了，既然配额不足，那就修改表空间的配额。如下：
+alter user ... quota unlimited on ...;
+

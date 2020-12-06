@@ -1,0 +1,90 @@
+2015.06.17
+问题：jkcj部署的统计信息脚本，执行报错。该脚本是使用root用户的crontab调用，
+01 02 * * * su - oracle -c /oradata/scripts/cebdba_general_stats/gatherStatsGeneral.sh 
+检查crontab日志如下：
+tail -n 500 /var/mail/root
+-------------------------------------------------------------------
+From root@BL860088 Wed Jun 17 02:01:01 EAT 2015
+Received: (from root@localhost)
+        by BL860088 (@(#)Sendmail version 8.13.3 - Revision 1.003:: HP-UX11.31 - 8th December,2008/8.13.3) id t5GI11Z7012682
+        for root; Wed, 17 Jun 2015 02:01:01 +0800 (EAT)
+Date: Wed, 17 Jun 2015 02:01:01 +0800 (EAT)
+From: root@BL860088
+Message-Id: <201506161801.t5GI11Z7012682@BL860088>
+Subject: cron
+
+ttytype: couldn't open /dev/tty for reading
+stty: : Not a typewriter
+(c)Copyright 1983-2006 Hewlett-Packard Development Company, L.P.
+(c)Copyright 1979, 1980, 1983, 1985-1993 The Regents of the Univ. of California
+(c)Copyright 1980, 1984, 1986 Novell, Inc.
+(c)Copyright 1986-2000 Sun Microsystems, Inc.
+(c)Copyright 1985, 1986, 1988 Massachusetts Institute of Technology
+(c)Copyright 1989-1993  The Open Software Foundation, Inc.
+(c)Copyright 1990 Motorola, Inc.
+(c)Copyright 1990, 1991, 1992 Cornell University
+(c)Copyright 1989-1991 The University of Maryland
+(c)Copyright 1988 Carnegie Mellon University
+(c)Copyright 1991-2006 Mentat Inc.
+(c)Copyright 1996 Morning Star Technologies, Inc.
+(c)Copyright 1996 Progressive Systems, Inc.
+
+Confidential computer software. Valid license from HP required for
+possession, use or copying.  Consistent with FAR 12.211 and 12.212,
+Commercial Computer Software, Computer Software Documentation, and
+Technical Data for Commercial Items are licensed to the U.S. Government
+under vendor's standard commercial license.
+
+
+
+***********************************************************************
+*       AppName:       UMP
+*       SysAdmin_A:    xiaoxu 
+*       SysAdmin_B:    pangyapeng
+*       AppAdmin:      zhoufang
+*************************************************************************
+*  modify info at "/home/sysadmin/HostInfoCollection/conf/sysconf"
+*************************************************************************
+Not a terminal
+stty: : Not a typewriter
+stty: : Not a typewriter
+Not a terminal                                                          
+stty: : Not a typewriter
+stty: : Not a typewriter
+Not a terminal                                                          
+stty: : Not a typewriter
+stty: : Not a typewriter
+gatherStatsSpecial.sh[24]: @: Parameter not set.                        
+logout
+1
+logout
+logout
+
+
+*************************************************
+Cron: ??μ??￠?±??3   o?tab ünμ??′?:
+
+su - oracle -c /oradata/scripts/cebdba_general_stats/gatherStatsGeneral.sh 
+
+
+
+
+发现原来是@环境变量问题：
+oracle@BL860088:/oradata/scripts/cebdba_general_stats$echo $@
+sh: @: Parameter not set.
+
+
+继续检查oracle用户的环境变量：
+oracle@BL860088:/oracle$cat .profile
+...........
+# Set up the shell environment:
+        set -u
+        trap "echo 'logout'" 0
+...........
+
+
+问题原因：set -u，应该是set +u
+
+解决办法：在收集工具的shell脚本中加上set +u
+
+

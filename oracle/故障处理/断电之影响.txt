@@ -1,0 +1,16 @@
+数据库服务器断电了，此时会有什么影响捏？
+1.运气不错，数据库可以正常启动
+2.如果使用的裸设备，需要激活vg，例如，vgchange -a y ...
+3.数据文件头损坏，不能正常启动数据库，即该数据文件的数据丢失，想别的办法恢复吧
+4.数据文件头正常，但是数据文件损坏，想别的办法恢复吧
+SQL> select * from cebplms.business_apply;
+select * from cebplms.business_apply
+                      *
+ERROR at line 1:
+ORA-01115: IO error reading block from file  (block # )
+ORA-01110: data file 7: '/dev/plms/plms02'
+ORA-27072: File I/O error
+Additional information: 4
+Additional information: 2593
+Additional information: -1
+

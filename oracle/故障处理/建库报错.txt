@@ -1,0 +1,32 @@
+问题描述：
+oracle@P740105P1:/oracle/createinst/log$cat createdb.log 
+ORACLE instance started.
+
+Total System Global Area 8551575552 bytes
+Fixed Size                  2263488 bytes
+Variable Size            1442842176 bytes
+Database Buffers         7096762368 bytes
+Redo Buffers                9707520 bytes
+CREATE DATABASE otp
+*
+ERROR at line 1:
+ORA-01501: CREATE DATABASE failed
+ORA-00200: control file could not be created
+ORA-00202: control file: '/dev/otpdb/ctrl01'
+ORA-27041: unable to open file
+IBM AIX RISC System/6000 Error: 6: No such device or address
+Additional information: 11
+
+
+oracle@P740105P1:/oracle/createinst/log$ll /dev/otpdb/ctrl01
+lrwxrwxrwx    1 root     system           16 May 19 08:29 /dev/otpdb/ctrl01 -> /dev/rora_ctrl01
+oracle@P740105P1:/oracle/createinst/log$ll  /dev/rora_ctrl01
+crw-rw----    1 oracle   dba          50,  4 May 18 11:28 /dev/rora_ctrl01
+oracle@P740105P1:/oracle/createinst/log$
+
+
+
+答曰：
+vg其实不在该机器上，是虚的。
+可用lsvg -o查看。
+
