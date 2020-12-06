@@ -1,7 +1,7 @@
-# ͨ��dockerfile��������
+# 通过dockerfile构建镜像。
 
 
-����׼��
-* ����˳���Dockerfile��д����������˳�򣬰Ѳ������仯�Ĳ��ְ�װ�����ŵ���ǰ�棬�������䶯�Ĳ����޸Ĵ���ŵ�����
-* ���ĳһ������δ�����ļ��䶯����ô���ܹ�������
-* ����ڹ�������Ĺ����а�װ��Ŀ�������� npm install , pip install ��ô���Ƚ���Щ�������Dockerfileǰ�棨���棩������ִ�д���Ĳ����ں��棨���棩
+　基本准则：
+* 构建顺序从Dockerfile书写的由上至下顺序，把不经常变化的部分安装依赖放到了前面，而经常变动的部分修改代码放到后面
+* 如果某一处命令未发生文件变动，那么就能够被缓存
+* 如果在构建镜像的过程中安装项目依赖比如 npm install , pip install 那么优先将这些步骤放在Dockerfile前面（上面），添加执行代码的部分在后面（下面）
