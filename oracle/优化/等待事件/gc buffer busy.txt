@@ -1,0 +1,2 @@
+一、gc buffer busy
+RAC节点间访问冲突和和流量比较大

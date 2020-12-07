@@ -1,0 +1,9 @@
+oracle修改cache buffer的步骤：
+1.申请持有CBC Latch
+2.获取独占Buffer Pin锁
+3.释放CBC Latch
+4.生成Redo数据		==》 所以如果redo效率太低，不但会有log file sync，还会有buffer busy waits
+5.修改buffer中的内容
+6.申请持有CBC Latch
+7.释放独占Buffer Pin锁
+8.释放CBC Latch

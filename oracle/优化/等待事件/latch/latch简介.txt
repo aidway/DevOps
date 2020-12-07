@@ -1,0 +1,254 @@
+http://blog.csdn.net/zq9017197/article/details/7103315
+Latch 是一种低级串行锁机制，用来保护内存结构。Latch 机制会通过对内存位的置0或置1来持有或者释放Latch。
+
+v$latch 展现的是统计信息的汇总，v$latch_children 展现的是统计信息的明细。之所以这样设计，是因为Latch在本质上是串行的，为了提高并发性，Oracle将很多内存结构进行分隔、拆分，通过多个子Latch来分别守护不同的内存区域，从而提升了性能。
+
+在数据库内部，Oracle通过v$latch视图记录不同类型Latch的统计数据，按获取和等待方式不同进行分类，Latch请求的类型可分为willing-to-wait和immediate两类。
+
+willing-to-wait：是指如果所请求的Latch不能立即得到，请求进程将等待一段很短的时间后再次发出请求。进程一直重复此过程直到得到Latch。
+
+immediate：是指如果所请求的Latch不能立即得到，请求进程就不再等待，而是继续执行下去。
+
+在v$latch中的以下字段记录了willing-to-wait请求。
+
+GETS：成功的以willing-to-wait请求类型请求一个Latch的次数。
+MISSES：初始以willing-to-wait请求类型请求一个Latch不成功，而进程进入等待的次数。
+SLEEPS：初始以willing-to-wait请求类型请求一个Latch不成功后，进程等待获取Latch时进入休眠的次数。
+
+在v$latch中的以下字段记录了immediate请求。
+
+IMMEDIATE_GETS：以immediate请求类型成功的获得一个Latch的次数。
+
+IMMEDIATE_MISSES：以immediate请求类型请求一个Latch不成功的次数。
+
+Oracle的Latch机制是竞争，所有用户进程争夺Latch。对于愿意等待类型（willing-to-wait）的Latch，如果一个进程在第一次尝试中没有获得Latch，那么它会等待并且再次尝试。如果系统存在多个CPU，那么此进程将围绕该Latch开始自旋（spin）。如果系统只有单CPU，那就谈不上spin了。经过spin后成功获得Latch的次数记录在v$latch.SPIN_GETS字段。继续来具体看下willing-to-wait和immediate两类Latch的大致数量：
+
+[sql] view plaincopyprint?
+SQL> select * from v$version where rownum = 1;  
+  
+BANNER  
+--------------------------------------------------------------------------------   
+Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - Production  
+  
+SQL> select count(*) from v$latch;  
+  
+  COUNT(*)  
+----------   
+       535  
+  
+SQL> select count(*) from v$latch where IMMEDIATE_GETS + IMMEDIATE_MISSES > 0;  
+  
+  COUNT(*)  
+----------   
+        25  
+  
+SQL> select count(*) from v$latch where IMMEDIATE_GETS + IMMEDIATE_MISSES = 0;  
+  
+  COUNT(*)  
+----------   
+       510  
+
+SQL> select * from v$version where rownum = 1;
+
+BANNER
+--------------------------------------------------------------------------------
+Oracle Database 11g Enterprise Edition Release 11.2.0.1.0 - Production
+
+SQL> select count(*) from v$latch;
+
+  COUNT(*)
+----------
+       535
+
+SQL> select count(*) from v$latch where IMMEDIATE_GETS + IMMEDIATE_MISSES > 0;
+
+  COUNT(*)
+----------
+        25
+
+SQL> select count(*) from v$latch where IMMEDIATE_GETS + IMMEDIATE_MISSES = 0;
+
+  COUNT(*)
+----------
+       510可以看到willing-to-wait类型的等待事件占了绝大部分，immediate类型仅为少数。
+[sql] view plaincopyprint?
+SQL> select NAME,IMMEDIATE_GETS,IMMEDIATE_MISSES,SPIN_GETS from v$latch where IMMEDIATE_GETS + IMMEDIATE_MISSES > 0 order by IMMEDIATE_GETS desc;  
+  
+NAME                                               IMMEDIATE_GETS IMMEDIATE_MISSES  SPIN_GETS  
+-------------------------------------------------- -------------- ---------------- ----------   
+redo allocation                                            183599                0          0  
+redo copy                                                  183599               58          0  
+hash table column usage latch                               72630                0          0  
+cache buffers chains                                        53905                0          0  
+simulator lru latch                                         37641                1          0  
+cache buffers lru chain                                     31500                0          0  
+space background task latch                                  9260                0          0  
+checkpoint queue latch                                       8378                0          0  
+active service list                                          7198                0          0  
+Memory Management Latch                                      4709                0          0  
+SQL memory manager latch                                     4695                0          0  
+  
+NAME                                               IMMEDIATE_GETS IMMEDIATE_MISSES  SPIN_GETS  
+-------------------------------------------------- -------------- ---------------- ----------   
+KTF sga latch                                                4462                0          0  
+cache table scan latch                                        680                0          0  
+process allocation                                            582                0          0  
+post/wait queue                                               323                0          0  
+MQL Tracking Latch                                            284                0          0  
+job workq parent latch                                        277                0          0  
+object queue header heap                                      254                0          0  
+row cache objects                                             204                0          0  
+SGA IO buffer pool latch                                       41                0          0  
+rules engine evaluation context statistics                      2                0          0  
+hash table modification latch                                   2                0          0  
+  
+NAME                                               IMMEDIATE_GETS IMMEDIATE_MISSES  SPIN_GETS  
+-------------------------------------------------- -------------- ---------------- ----------   
+alert log latch                                                 2                0          0  
+multiblock read objects                                         2                0          0  
+shared server configuration                                     2                0          0  
+  
+已选择25行。  
+  
+SQL>  select NAME,IMMEDIATE_GETS,IMMEDIATE_MISSES,SPIN_GETS from v$latch_children where name = 'redo copy';  
+  
+NAME                                               IMMEDIATE_GETS IMMEDIATE_MISSES  SPIN_GETS  
+-------------------------------------------------- -------------- ---------------- ----------   
+redo copy                                                       0                0          0  
+redo copy                                                  183604               58          0  
+
+SQL> 
+select NAME,IMMEDIATE_GETS,IMMEDIATE_MISSES,SPIN_GETS 
+  from v$latch 
+ where IMMEDIATE_GETS + IMMEDIATE_MISSES > 0 
+ order by IMMEDIATE_GETS desc;
+
+NAME                                               IMMEDIATE_GETS IMMEDIATE_MISSES  SPIN_GETS
+-------------------------------------------------- -------------- ---------------- ----------
+redo allocation                                            183599                0          0
+redo copy                                                  183599               58          0
+hash table column usage latch                               72630                0          0
+cache buffers chains                                        53905                0          0
+simulator lru latch                                         37641                1          0
+cache buffers lru chain                                     31500                0          0
+space background task latch                                  9260                0          0
+checkpoint queue latch                                       8378                0          0
+active service list                                          7198                0          0
+Memory Management Latch                                      4709                0          0
+SQL memory manager latch                                     4695                0          0
+
+NAME                                               IMMEDIATE_GETS IMMEDIATE_MISSES  SPIN_GETS
+-------------------------------------------------- -------------- ---------------- ----------
+KTF sga latch                                                4462                0          0
+cache table scan latch                                        680                0          0
+process allocation                                            582                0          0
+post/wait queue                                               323                0          0
+MQL Tracking Latch                                            284                0          0
+job workq parent latch                                        277                0          0
+object queue header heap                                      254                0          0
+row cache objects                                             204                0          0
+SGA IO buffer pool latch                                       41                0          0
+rules engine evaluation context statistics                      2                0          0
+hash table modification latch                                   2                0          0
+
+NAME                                               IMMEDIATE_GETS IMMEDIATE_MISSES  SPIN_GETS
+-------------------------------------------------- -------------- ---------------- ----------
+alert log latch                                                 2                0          0
+multiblock read objects                                         2                0          0
+shared server configuration                                     2                0          0
+
+已选择25行。
+
+SQL>  select NAME,IMMEDIATE_GETS,IMMEDIATE_MISSES,SPIN_GETS from v$latch_children where name = 'redo copy';
+
+NAME                                               IMMEDIATE_GETS IMMEDIATE_MISSES  SPIN_GETS
+-------------------------------------------------- -------------- ---------------- ----------
+redo copy                                                       0                0          0
+redo copy                                                  183604               58          0
+需要注意的是，immediate类型的Latch通过是因为存在多个可用Latch，最常见的如redo copy latch，当process想要取得redo copy latch时，它首先要求其中一个Latch，如果可以取得就持有该Latch，如果不能获取，它会立刻转向要求另一个redo copy latch，只有所有的redo copy latch都无法取得时，才会sleep和wait。 
+immediate的另外一种原因是每个Latch都有level的概念（level1~14）。当一个process需要取得一组Latches时，为避免死锁，取得Latches有一定的顺序，即process新求请求的Latch的level，应该大于process目前所握有的Latch的level。所有如果process要求的新Latch的level小于目前所持有的Latch的level，正常情况下，Oracle要求process先释放目前所持有的所有Latch，再依序取得这些Latch。为节省时间，Oracle允许进程以no-wait方式要求较低level的Latch。如果成功取得，即可以避免deadlock，又可以节省时间。
+
+在Oracle 10g之前，Latch Free同Enqueue一样，是一个汇总等待。从Oracle 10g开始，这个等待事件被分解，现在可以更直接的通过绘画等待得知具体的Latch发生在哪些资源上：
+
+[sql] view plaincopyprint?
+SQL> select NAME,WAIT_CLASS from v$event_name where name like '%latch%';  
+  
+NAME                                               WAIT_CLASS  
+-------------------------------------------------- ----------------------------------------------------------------   
+latch: cache buffers chains                        Concurrency  
+latch: redo writing                                Configuration  
+latch: redo copy                                   Configuration  
+latch: Undo Hint Latch                             Concurrency  
+latch: In memory undo latch                        Concurrency  
+latch: MQL Tracking Latch                          Concurrency  
+latch: row cache objects                           Concurrency  
+latch: shared pool                                 Concurrency  
+latch free                                         Other  
+latch activity                                     Other  
+wait list latch activity                           Other  
+... ...  
+
+SQL> select NAME,WAIT_CLASS from v$event_name where name like '%latch%';
+
+NAME                                               WAIT_CLASS
+-------------------------------------------------- ----------------------------------------------------------------
+latch: cache buffers chains                        Concurrency
+latch: redo writing                                Configuration
+latch: redo copy                                   Configuration
+latch: Undo Hint Latch                             Concurrency
+latch: In memory undo latch                        Concurrency
+latch: MQL Tracking Latch                          Concurrency
+latch: row cache objects                           Concurrency
+latch: shared pool                                 Concurrency
+latch free                                         Other
+latch activity                                     Other
+wait list latch activity                           Other
+... ...
+最常见的Latch集中于Buffer Cache的竞争和Shared Pool的竞争。和Buffer Cache相关的主要Latch竞争有cache buffers chains和cache buffers lru chain，和Shared Pool相关的主要Latch竞争有shared pool latch和library cache latch等。 
+Buffer Cache的Latch竞争经常是由于热点块竞争引起的；Shared Pool的Latch竞争通常是由于sql的大量硬解析引起的。
+
+在数据库运行环境中，不可避免的出现进程异常终止的情况，而进程又可能持有Latch，所有如何释放死进程持有的Latch对于数据库来说也是非常重要的。PMON进程的一个职责就是检测和清除死进程，释放相应的资源，Latch正式这些资源之一，这一过程通常被称为Latch Cleanup。共享池（Shared Pool）中有相应的内存结构与此相关：
+
+[sql] view plaincopyprint?
+SQL> select pool,name,bytes from v$sgastat where lower(name) like '%latch cleanup%';  
+  
+POOL         NAME                                                    BYTES  
+------------ -------------------------------------------------- ----------   
+shared pool  KTU latch cleanup                                         152  
+shared pool  KTC latch cleanup                                         240  
+
+SQL> select pool,name,bytes from v$sgastat where lower(name) like '%latch cleanup%';
+
+POOL         NAME                                                    BYTES
+------------ -------------------------------------------------- ----------
+shared pool  KTU latch cleanup                                         152
+shared pool  KTC latch cleanup                                         240Latch Cleanup就是指PMON清除死进程持有Latch的这一工程，但是要知道Oracle要做的工作还远远不止与此。由于Latch是用户保护内存结构的关键，如果一个持有Latch的进程异常终止，那么相应的内存结构则很有可能处于一种不一致的状态，因此Oracle需要支持Latch Recovery。为此，在进程持有Latch进程内存结构的修改时，会首先向Latch Recovery Area写入相应的记录。PMON进行的工作首先是恢复Latch保护的数据结构，然后释放Latch。[sql] view plaincopyprint?
+SQL> select pool,name,bytes from v$sgastat where lower(name) like '%latch recovery%';  
+  
+POOL         NAME                                                    BYTES  
+------------ -------------------------------------------------- ----------   
+shared pool  latch recovery structures                                2864  
+shared pool  latch recovery alignment                                   68  
+
+SQL> select pool,name,bytes from v$sgastat where lower(name) like '%latch recovery%';
+
+POOL         NAME                                                    BYTES
+------------ -------------------------------------------------- ----------
+shared pool  latch recovery structures                                2864
+shared pool  latch recovery alignment                                   68然而由于PMON通常每3秒唤醒一次，执行相关的任务，包括Latch Cleanup，而数据库往往更加繁忙，所有Oracle需要有其他机制来初始化Latch Cleanup过程。如果一个进程连续尝试获得Latch失败，它会执行一个Latch Activity Test去检查是否需要进行Latch Cleanup，如果Latch在5厘秒之内没有活动，则通知PMON，PMON进行检查持有该Latch 的相关进程是否出现异常，以及是否需要进行Latch清除工作。 
+当一个进程执行Latch Activity Test以及等待PMON检查持有Latch进程的状态时，在数据库中以latch activity事件处于等待：
+
+
+[sql] view plaincopyprint?
+SQL> select NAME,PARAMETER1,PARAMETER2,PARAMETER3 from v$event_name where name = 'latch activity';  
+  
+NAME            PARAMETER1      PARAMETER2      PARAMETER3  
+--------------- --------------- --------------- ---------------   
+latch activity  address         number          process#  
+
+SQL> select NAME,PARAMETER1,PARAMETER2,PARAMETER3 from v$event_name where name = 'latch activity';
+
+NAME            PARAMETER1      PARAMETER2      PARAMETER3
+--------------- --------------- --------------- ---------------
+latch activity  address         number          process#latch activity的第一个参数是Latch的内存地址，参数2代表Latch的类型，参数3代表持有Latch的进程号（0代表正在进行Latch Activity Test）。
+有时候在数据库关闭时（甚至是abort关闭时），可能会看到如下提示：PMON failed to acquire latch，这就是指在关闭数据库时，PMON进程不能及时终止进程，释放相关的内存锁定。在这种情况下，通常通过手工杀掉操作系统进程等方式可以加快数据库的关闭。

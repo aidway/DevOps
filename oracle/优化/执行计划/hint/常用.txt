@@ -1,0 +1,37 @@
+-- 使用hash连接
+select /*+ use_hash(s,c) */count(distinct c.client_no)
+  from tbshareinfo s, tbclientinfo c
+ where s.enterp_client_no = '00001075'
+   and s.client_no = c.client_no
+   and s.tot_vol > 0;
+
+
+
+
+
+
+-- 全表扫描
+select /*+ full(s) */ * from emp s where empno=7788;
+ 
+-- 使用索引全扫描
+/*+index(t)*/
+
+/*+index(table_name,index_name)*/
+
+-- 嵌套循环
+/*+ leading(t1) use_nl(t2)*/
+t1:驱动表
+
+-- 哈希连接
+/*+ leading(t1) use_hash(t2)*/
+
+-- 排序合并
+/*+ ordered use_merge(t2)*/
+
+-- 前20行
+/*+ first_rows(20) */
+
+-- 所有行
+/*+ all_rows */
+
+

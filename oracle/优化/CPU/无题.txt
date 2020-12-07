@@ -1,0 +1,11 @@
+1.Use Oracle Database Resource Manager to reduce the impact of peak-load-use patterns by prioritizing CPU 
+  resource allocation
+2.Avoid running too many processes that use a large amount of CPU
+3.Increase hardware capacity, including changing the system architecture
+
+
+
+The Wait for CPU is the time the process spent in the operating system run queue.
+
+
+cpu高-->逻辑读高-->如果使用绑定变量，检查不同变量值返回的数据量
