@@ -1,0 +1,11 @@
+sqlplus / as sysdba
+alter session set events '10046 trace name context forever,level 12';
+select * from scott.emp a,scott.dept b where a.deptno=b.deptno;
+select count(*) from scott.t1;
+select * from scott.t1;
+alter session set events '10046 trace name context off';
+
+cd /oracle/admin/PLMS/udump
+tkprof plms_ora_15236.trc 10046.txt sys=no sort=prsela,exeela,fchela
+
+

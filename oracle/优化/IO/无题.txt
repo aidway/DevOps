@@ -1,0 +1,12 @@
+如果IO遇到瓶颈：
+Use Oracle Automatic Storage Management (Oracle ASM) to manage database storage.
+Stripe everything across every disk to distribute I/O.
+Move files such as archived redo logs and online redo logs to separate disks.
+Store required data in memory to reduce the number of physical I/Os.
+
+
+Troubleshooting I/O Related Waits (文档 ID 223117.1)
+
+
+read：物理读，物理读消耗IO
+get：逻辑读，逻辑读消耗CPU

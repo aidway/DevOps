@@ -1,0 +1,45 @@
+alter table move 或shrink space可以收缩段，用来消除部分行迁移，消除空间碎片，使数据更紧密，但move跟shrink space还是有区别的。
+Move会移动高水位，但不会释放申请的空间，是在高水位以下(below HWM)的操作。
+而shrink space 同样会移动高水位，但也会释放申请的空间，是在高水位上下(below and above HWM)都有的操作。
+Move解决问题：
+a. 我们可以使用move将一个table从当前的tablespace上移动到另一个tablespace上：
+alter table t move tablespace tablespace_name;
+b. 我们还可以用move来改变table已有的block的存储参数,如：
+alter table t move storage (initial 30k next 50k);
+c.另外，move操作也可以用来解决table中的行迁移的问题。
+使用move的一些注意事项：
+a. table上的index需要rebuild：
+在前面我们讨论过，move操作后，数据的rowid发生了改变，我们知道，index是通过rowid来fetch数据行的，所以，table上的index是必须要rebuild的。
+alter index index_name rebuild online；
+b.move时对table的锁定
+当我们对table进行move操作时，查询v$locked_objects视图可以发现，table上加了exclusive lock
+c.关于move时空间使用的问题：
+当我们使用alter table move来降低table的HWM时，有一点是需要注意的，这时，当前的tablespace中需要有1倍于table的空闲空间以供使用
+
+
+Shrink space语法：
+alter table shrink space [ | compact | cascade ];
+alter table shrink space compcat;
+收缩表，但会保持 high water mark;
+
+alter table shrink space;
+收缩表，降低 high water mark;
+
+alter table shrink space cascade;
+收缩表，降低 high water mark，并且相关索引也要收缩
+
+用shrink有两个前提条件:
+1、表必须启用row movement，如：
+alter table nonsrt.TAB_EZG_BIZ_UNCONTRACTED enable row movement;
+alter table nonsrt.TAB_EZG_BIZ_UNCONTRACTED shrink space;
+alter table nonsrt.TAB_EZG_BIZ_UNCONTRACTED disable row movement;
+
+
+
+2、表段所在表空间的段空间管理(segment space management)必须为auto
+segment shrink分为两个阶段：
+1、数据重组(compact):通过一系列insert、delete操作，将数据尽量排列在段的前面。在这个过程中需要在表上加RX锁，即只在需要移动的行上加锁。由于涉及到rowid的改变，需要enable row movement.同时要disable基于rowid的trigger.这一过程对业务影响比较小。
+2、HWM调整：第二阶段是调整HWM位置，释放空闲数据块。此过程需要在表上加X锁，会造成表上的所有DML语句阻塞。在业务特别繁忙的系统上可能造成比较大的影响。
+注意：shrink space语句两个阶段都执行。
+shrink space compact只执行第一个阶段。
+如果系统业务比较繁忙，可以先执行shrink space compact重组数据,然后在业务不忙的时候再执行shrink space降低HWM释放空闲数据块。

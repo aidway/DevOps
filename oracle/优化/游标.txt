@@ -1,0 +1,30 @@
+v$sqlarea.version_count，记录的就是parent cursor有多少个child cursor，或可参考AWR报告
+如果一个parent cursor的version太多，可以通过查询v$sql_shared_cursor来查询没有共享同一个cursor游标的原因
+
+
+
+select * from v$mystat where rownum=1;
+set pause on pagesize 1
+set pause "Press ENTER to continue..."
+select * from emp;
+
+
+-- 当session状态为inactive时，游标状态也是open
+select *
+  from v$open_cursor s
+ where s.USER_NAME = 'SCOTT'
+   and sid in (397)
+   and sql_text like 'select%';
+
+select s.SADDR,
+       s.SID,
+       s.SERIAL#,
+       s.PADDR,
+       s.USERNAME,
+       s.STATUS,
+       s.sql_id,
+       s.PREV_SQL_ID,
+       s.EVENT
+  from v$session s
+ where sid = 397;
+

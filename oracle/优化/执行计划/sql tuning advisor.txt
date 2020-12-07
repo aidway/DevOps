@@ -1,0 +1,16 @@
+var tuning_task varchar2(100);  
+ DECLARE  
+  l_sql_id v$session.prev_sql_id%TYPE;  
+  l_tuning_task VARCHAR2(30);  
+BEGIN  
+   l_sql_id:='9dn3p7y4fahz5';  
+   l_tuning_task := dbms_sqltune.create_tuning_task(sql_id => l_sql_id);  
+   :tuning_task:=l_tuning_task;  
+   dbms_sqltune.execute_tuning_task(l_tuning_task);  
+   dbms_output.put_line(l_tuning_task);  
+ END;  
+ /  
+ 
+print tuning_task;  
+  
+SELECT dbms_sqltune.report_tuning_task(:tuning_task) FROM dual;  

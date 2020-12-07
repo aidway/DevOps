@@ -1,0 +1,56 @@
+http://www.itpub.net/thread-1777234-1-1.html
+http://blog.csdn.net/hj402555749/article/details/24194159
+ 
+
+（1）优化了redo日志的I/O性能，尽量使用快速磁盘，不要把redo log file存放在raid 5的磁盘上；
+（2）加大日志缓冲区(log buffer)；
+（3）使用批量提交，减少提交的次数；
+（4）部分经常提交的事务设置为异步提交；
+（5）适当使用NOLOGGING/UNRECOVERABLE等选项；
+（6）采用专用网络，正确设置网络UDP buffer参数；
+（7）安装最新版本数据库避免bug，具体bug修复的版本参考文档；
+
+
+############################################################################################
+log file parallel write = 13 			>> redo log file 存在io争用
+log switches (derived) = 7   			>> redo log file 太小
+User calls/(user commits+user rollbacks) <30    >> 这个时候数据库commit是频繁的
+
+
+1、log file parallel write IO争用：建议更换IO性能高的磁盘，此系统为在线生产系统目前先不做更换，做好更换的规划
+2、log switches (derived)：添加日志组的大小
+3、COMMIT频繁：
+a)把一些可以批量提交的事务批量处理
+b)一些进程可以commit nowait
+c)适量的使用nologging
+
+Troubleshooting: "log file sync" Waits (文档 ID 1376916.1)
+
+############################################################################################
+
+
+
+
+-- 查询redo相关事件
+col name for a15
+col class_name for a30
+select s.name,
+       decode(s.CLASS,
+              2,
+              'Redo',
+              4,
+              'Enqueue',
+              8,
+              'Cache',
+              16,
+              'OS',
+              32,
+              'Real Application Clusters',
+              64,
+              'SQL',
+              128,
+              'Debug') class_name,
+       s.VALUE
+  from v$sysstat s
+ where s.name like 'redo%'
+ order by value desc;

@@ -1,0 +1,8 @@
+一、应用级bind化处理：
+pl/sql中使用using短语。
+jdbc中通过PrepareStatement、SetXXX()的调用，为sql语句的？变量赋值。
+
+二、系统级bind化处理
+修改参数cursor_sharing为force
+
+

@@ -1,0 +1,65 @@
+ASKTOM网站提供了一个函数remove_constants，来检查共享池中的SQL运行情况
+1、首先创建一个表，用于存放整理过的数据：
+create table t1 as select sql_text from v$sqlarea;
+2、给表增加一个字段：
+alter table t1 add sql_text_wo_constants varchar2(1000);
+3、创建函数remove_constants:
+create or replace function 
+remove_constants( p_query in varchar2 ) return varchar2
+as
+    l_query long;
+    l_char  varchar2(1);
+    l_in_quotes boolean default FALSE;
+begin
+    for i in 1 .. length( p_query )
+    loop
+        l_char := substr(p_query,i,1);
+        if ( l_char = '''' and l_in_quotes )
+        then
+            l_in_quotes := FALSE;
+        elsif ( l_char = '''' and NOT l_in_quotes )
+        then
+            l_in_quotes := TRUE;
+            l_query := l_query || '''#';
+        end if;
+        if ( NOT l_in_quotes ) then
+            l_query := l_query || l_char;
+        end if;
+    end loop;
+    l_query := translate( l_query, '0123456789', '@@@@@@@@@@' );
+    for i in 0 .. 8 loop
+        l_query := replace( l_query, lpad('@',10-i,'@'), '@' );
+        l_query := replace( l_query, lpad(' ',10-i,' '), ' ' );
+    end loop;
+    return upper(l_query);
+end;
+/
+4、将v$sql视图中的字段：sql_text的数据用remove_constants处理后，来更新t1表
+update t1 set sql_text_wo_constants = remove_constants(sql_text);
+5、查出除了谓词条件不同的SQL语句和它们的执行次数，这里是查询SQL没有重用超过100次的SQL语句:
+select sql_text_wo_constants, count(*)
+  from t1
+ group by sql_text_wo_constants
+having count(*) > 100
+ order by 2
+/
+测试：
+使用一个循环执行1000次某条SQL，每次执行只有谓词不同：
+create table t as select * from dba_objects;
+begin
+for i in 1..1000 loop
+execute immediate 'select * from t where OBJECT_ID = '||i;
+end loop;
+end;
+/
+
+select sql_text_wo_constants, count(*)
+  from t1
+ group by sql_text_wo_constants
+having count(*) > 100
+ order by 2;
+SQL_TEXT_WO_CONSTANTS  COUNT(*)
+---------------------  ------------
+SELECT * FROM T WHERE OBJECT_ID = @
+      1000
+可以看到输出结果中，这条语句被执行了1000次，其中谓词条件被“@”代替，这样通过这个函数，可以很容易找到共享池中哪些SQL没有使用绑定变量。

@@ -1,0 +1,23 @@
+搜索buffer的过程：
+1）进程根据要访问的文件号、块号，计算hash值
+2）根据hash值找到hash bucket
+3）搜索bucket后的链表，查找哪个BH是目标BH（buffer header）
+4）找到目标BH，从中取出buffer的BA（buffer address）
+5）按BA访问buffer
+
+
+
+CBC Latch：保护链表
+修改完BH中Buffer Pin锁的状态后，CBC Latch将释放，之后，进程在Buffer Pin锁的保护下访问Buffer。
+在获得CBC Latch后，进程要完成两个工作：
+1）搜索链表，查找目标BH
+2）修改BH中Buffer Pin锁的状态，加Buffer Pin锁，保护BH
+
+Buffer Pin锁的状态：
+共享：S
+独占：X
+没加锁：0
+
+
+逻辑读为什么会消耗cpu？因为逻辑读通过hash算法判断块是否在buffer中，hash算法消耗cpu。
+

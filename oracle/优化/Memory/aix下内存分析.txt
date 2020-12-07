@@ -1,0 +1,55 @@
+procmap是用来显示进程地址空间，通过这个命令找出来的“read/write”表示为进程的私有内存,如果对应到oracle 进程的LOCAL中来,也就是对应了是oracle 会话进程占用的操作系统内存,和sga与pga无关，即ORACLE数据库进程占用的额外的系统内存,在计算oracle数据库消耗内存的时候，要考虑sga+pga+process占用的内存
+
+
+
+root@P780010V16:/#procmap 10813740
+10813740 : oracleZKDJ (LOCAL=NO) 
+100000000            97513K  read/exec         oracle
+110000065             2431K  read/write        oracle
+9fffffff0000000         51K  read/exec         /usr/ccs/bin/usla64
+9fffffff000cfe2          0K  read/write        /usr/ccs/bin/usla64
+900000000473200         91K  read/exec         /lib/libsrc.a[shr_64.o]
+9001000a03e07a8         55K  read/write        /lib/libsrc.a[shr_64.o]
+90000000045a300         98K  read/exec         /lib/libcorcfg.a[shr_64.o]
+9001000a04dc7c8         18K  read/write        /lib/libcorcfg.a[shr_64.o]
+9000000006e4200        750K  read/exec         /lib/liblvm.a[shr_64.o]
+9001000a0419028        219K  read/write        /lib/liblvm.a[shr_64.o]
+900000000444f00         82K  read/exec         /lib/libcfg.a[shr_64.o]
+9001000a03ef8f0         26K  read/write        /lib/libcfg.a[shr_64.o]
+90000000040e3a0          2K  read/exec         /lib/libcrypt.a[shr_64.o]
+9001000a0106948          0K  read/write        /lib/libcrypt.a[shr_64.o]
+90000000129d860          5K  read/exec         /lib/libc.a[aio_64.o]
+9001000a0536568          0K  read/write        /lib/libc.a[aio_64.o]
+9000000003efc00        120K  read/exec         /lib/libodm.a[shr_64.o]
+9001000a03d5cc8         40K  read/write        /lib/libodm.a[shr_64.o]
+9000000007a0c80        147K  read/exec         /lib/libperfstat.a[shr_64.o]
+9001000a04e2960         14K  read/write        /lib/libperfstat.a[shr_64.o]
+900000000411000          0K  read/exec         /lib/libdl.a[shr_64.o]
+9001000a0535000          0K  read/write        /lib/libdl.a[shr_64.o]
+900000000a22100       8680K  read/exec         /oracle/product/10.2.0/lib/libjox10.a[shr.o]
+8001000a0000ca0        588K  read/write        /oracle/product/10.2.0/lib/libjox10.a[shr.o]
+9000000009ad000        257K  read/exec         /lib/libpthreads.a[shr_xpg5_64.o]
+9001000a0450000        559K  read/write        /lib/libpthreads.a[shr_xpg5_64.o]
+900000000000800       4025K  read/exec         /lib/libc.a[shr_64.o]
+9001000a0000020       1047K  read/write        /lib/libc.a[shr_64.o]
+         Total      116831K
+
+简化命令，统计私有内存, procmap 10813740|grep "read/write" |awk -F " " '{print $2}',
+root@P780010V16:/#procmap 10813740|grep "read/write" |awk -F " " '{print $2}'
+2431K
+0K
+55K
+18K
+219K
+26K
+0K
+0K
+40K
+14K
+0K
+588K
+559K
+1047K
+通过相关计算的出来,在当前的操作系统和数据库版本中，一个LOCAL=NO进程占用系统内存为:4997KB
+
+

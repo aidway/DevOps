@@ -1,0 +1,9 @@
+1.Use Automatic Memory Management to automatically manage and distribute memory between the 
+  System Global Area (SGA) and the aggregate program global area (PGA aggregate).
+2.Use the Memory Advisor to set SGA and PGA memory target values.
+3.Use Automatic PGA Management to manage SQL memory execution.
+4.Avoid running too many processes that consume large amounts of memory.
+5.Reduce paging or swapping.
+6.Reduce the number of open cursors and hard parsing with cursor sharing.
+
+

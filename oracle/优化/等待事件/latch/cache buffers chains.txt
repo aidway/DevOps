@@ -1,0 +1,108 @@
+问题：cache buffers chains
+处理思路：
+1.查找热块（表、索引）
+4.改造性能低的sql，减少不必要的访问
+
+
+若是小表，可以将表中数据分散到尽量多的块，或是将表缓存到keep池中
+若是大表，可考虑hash分区，通过hash算法将不同的数据插入到不同的分区
+若是索引，可改为反向键索引，注意，反向键索引不能使用index range scan
+若是索引根块，将索引分区
+
+
+-- 查询latch的命中率
+select name,
+       gets,
+	   spin_gets,
+       misses,
+       misses / gets,
+       sleeps,
+       immediate_gets,
+       immediate_misses,
+	   wait_time
+  from v$latch
+ where name = 'cache buffers chains';
+
+name: latch名称
+immediate_gets: 以immediate模式latch请求数
+immediate_misses: 请求失败数
+gets: 以willing to wait请求模式latch的请求数
+misses: 初次尝试请求不成功次数
+spin_gets: 第一次尝试失败，但在以后的轮次中成功
+sleep[x]:  成功获取前sleeping次数
+wait_time: 花费在等待latch的时间 
+
+如果MISSES/GETS在达10%左右，则说明有比较严重的latch争用 
+ 
+SELECT *
+  FROM (SELECT addr,
+               child#,
+               gets,
+               misses,
+               sleeps,
+               immediate_gets   igets,
+               immediate_misses imiss,
+               spin_gets        sgets
+          FROM v$latch_children
+         WHERE NAME = 'cache buffers chains'
+         ORDER BY sleeps DESC)
+ WHERE ROWNUM < 11;
+
+
+-- 查找热点块
+set line 200 pages 999
+col owner for a20
+col object_name for a30
+col object_type for a20
+SELECT *
+  FROM (SELECT O.OWNER, O.OBJECT_NAME, O.OBJECT_TYPE, SUM(TCH) TOUCHTIME
+          FROM X$BH B, DBA_OBJECTS O
+         WHERE B.OBJ = O.DATA_OBJECT_ID
+           AND B.TS# > 0
+         GROUP BY O.OWNER, O.OBJECT_NAME, O.OBJECT_TYPE
+         ORDER BY SUM(TCH) DESC)
+ WHERE ROWNUM <= 10;
+
+
+-- 查看引起latch: cache buffers chains的sql
+select a.*,b.SQL_TEXT
+  from (select count(*) cnt,
+               sql_id,
+               nvl(o.object_name, ash.current_obj#) objn,
+               substr(o.object_type, 0, 10) otype,
+               CURRENT_FILE# fn,
+               CURRENT_BLOCK# blockn
+          from v$active_session_history ash, all_objects o
+         where event like 'latch: cache buffers chains'
+           and o.object_id(+) = ash.CURRENT_OBJ#
+         group by sql_id,
+                  current_obj#,
+                  current_file#,
+                  current_block#,
+                  o.object_name,
+                  o.object_type
+         order by count(*) desc)a,v$sql b
+ where rownum <= 10
+ and a.sql_id=b.sql_id;
+
+
+-- 建反向键索引
+create index ind_t1_id on t1(id) reverse;
+
+
+-- 对表进行minimise操作
+alter table SYS_ORG_INFO  minimize records_per_block; 
+
+-- 查询表的数据分布在多少个块上
+select count(distinct dbms_rowid.rowid_block_number(rowid)) block_cnts
+  from SYS_ORG_INFO;
+
+
+-- 查询每个块上有多少行数据
+select dbms_rowid.rowid_block_number(rowid)block_num , count(*) rows_per_block
+  from sys_org_info
+ group by dbms_rowid.rowid_block_number(rowid)
+ order by rows_per_block desc;
+
+-- 将小表放入keep池
+exec DBMS_SHARED_POOL.KEEP ('CFIM.SYS_ORG_INFO');

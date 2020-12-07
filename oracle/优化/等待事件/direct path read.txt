@@ -1,0 +1,18 @@
+ 1.大量的磁盘排序操作，order by, group by, union, distinct, rollup,max() 无法在PGA中完成排序，
+      需要利用temp表空间进行排序,当从临时表空间中读取排序结果时，会产生direct path read.
+　　2. 大量的Hash Join操作，利用temp表空间保存hash区。
+　　3. SQL语句的并行处理
+　　4. 大表的全表扫描，在10g开始，全表扫描的算法有新的变化，根据表的大小、高速缓存的大小等信息，决
+       定是否绕过SGA直接从磁盘读Oracle11g取数据。而10g则是全部通过高速缓存读取数据，称为table scan
+       (large)。11g认为大表全表时使用直接路径读，可能比10g中的数据文件散列读(db file scattered
+       reads)速度更快，使用的latch也更少。
+    原理清楚了，定位SQL其实很简单，有以下两种情况：
+第一种：当时发现，可以通过以下方法进行定位
+    select sql_id,count(*) from v$session where event= 'direct path read temp' group by sql_id desc;
+    重点关注count(*)值较高的SQL
+第二种：很久以后才发现，可以通过以下方法进行定位
+    select sql_id,count(*) from dba_hist_active_sess_history where event= 'direct path read
+    temp' group by sql_id desc;
+    其实前面原理说了四条，基本上可以这么理解，出现这种情况，基本上可以定位在以下两个方面
+    1.SQL执行计划不是最优，需要进行优化
+    2.SQL写法欠佳，需要进行改写
