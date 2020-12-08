@@ -1,0 +1,9 @@
+以下为 docker load 时的报错信息。
+
+一、symlink ../xxxxx/diff /var/lib/docker/overlay2/xxxx no such file or directory
+原因：疑似服务器环境问题，有docker相关的脏文件。
+解决：
+docker system prune -a
+service docker stop
+service docker start
+

@@ -1,0 +1,2 @@
+找到session对应的配置文件（SecureCRT配置目录的Sessions子目录下），一般该文件的名称为 ${IP}.ini
+将 S:"GSSAPI Method"=auto-detect 改为  S:"GSSAPI Method"=none
