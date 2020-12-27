@@ -1,0 +1,18 @@
+方法一：
+1、在 https://www.ipaddress.com/  搜索：
+github.global.ssl.fastly.net
+github.com
+
+2、在hosts中配置，如
+140.82.112.3 github.com
+199.232.69.194 github.global.ssl.fastly.net
+
+
+3、保存更新DNS
+Windows： ipconfig /flushdns
+Linux：   /etc/init.d/networking restart
+
+
+方法二：
+将 git clone https://github.com/apache/incubator-echarts.git  改为：
+git clone https://github.com.cnpmjs.org/apache/incubator-echarts.git
